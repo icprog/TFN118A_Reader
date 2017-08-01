@@ -100,8 +100,12 @@ void simple_uart_config(  uint8_t rts_pin_number,
     NRF_UART0->PSELRTS = rts_pin_number;
     NRF_UART0->CONFIG  = (UART_CONFIG_HWFC_Enabled << UART_CONFIG_HWFC_Pos);
   }
-
+  #ifdef LOG_ON
+  NRF_UART0->BAUDRATE         = (UART_BAUDRATE_BAUDRATE_Baud115200 << UART_BAUDRATE_BAUDRATE_Pos);
+  #else
   NRF_UART0->BAUDRATE         = (UART_BAUDRATE_BAUDRATE_Baud9600 << UART_BAUDRATE_BAUDRATE_Pos);
+  #endif
+  
   NRF_UART0->ENABLE           = (UART_ENABLE_ENABLE_Enabled << UART_ENABLE_ENABLE_Pos);
   NRF_UART0->TASKS_STARTTX    = 1;
   NRF_UART0->TASKS_STARTRX    = 1;

@@ -1,14 +1,17 @@
 
 #include "app_init.h"
+#include "app_var.h"
+#include "simple_uart.h"
+#include "Debug_log.h"
 
 #define rtc_interval 1  //单位s
-#define rtc_base (32768*rtc_interval) - 1
+#define rtc_base ((32768*rtc_interval) - 1)
 /************************************************* 
-Description:配置低频时钟时钟源  
-Input:
+@Description:配置低频时钟时钟源  
+@Input:
 （1）、source : 1:选择外部晶振 XOSC 0：内部rc ROSC
-Output:无
-Return:无
+@Output:无
+@Return:无
 *************************************************/  
 static void lfclk_init(uint8_t source)
 {
@@ -24,10 +27,10 @@ static void lfclk_init(uint8_t source)
 }
 
 /************************************************* 
-Description:产生0~255随机数 
-Input:无
-Output:输出随机值
-Return:无
+@Description:产生0~255随机数 
+@Input:无
+@Output:输出随机值
+@Return:无
 *************************************************/ 
 //uint8_t rng_value = 0;
 static uint8_t random_vector_generate()
@@ -46,30 +49,50 @@ static uint8_t random_vector_generate()
 //	return rng_value;
 }
 /************************************************* 
-Description:rtc初始化  
-Input:
-Output:无
-Return:无
+@Description:rtc初始化  
+@Input:
+@Output:无
+@Return:无
 *************************************************/  
-void rtc_init(void)
+void rtc0_init(void)
 {
 	lfclk_init(1);//1：XOSC 0：ROSC
 	NRF_RTC0->PRESCALER = 0;//32.768khz 约等于0.03ms
 	NRF_RTC0->CC[0] = rtc_base;//
 	NRF_RTC0->EVENTS_COMPARE[0] = 0;//EVENTS_TICK
 	NRF_RTC0->INTENSET =  RTC_INTENCLR_COMPARE0_Msk;//
-	NRF_RTC0->TASKS_START = 1;
+//	NRF_RTC0->TASKS_START = 1;
 	
 	NVIC_SetPriority(RTC0_IRQn,RTC_PRIORITY);
 	NVIC_ClearPendingIRQ(RTC0_IRQn);
 	NVIC_EnableIRQ( RTC0_IRQn );
 }
+/************************************************* 
+@Description:rtc启动计数
+@Input:
+@Output:无
+@Return:无
+*************************************************/  
+void rtc0_start(void)
+{
+	NRF_RTC0->TASKS_START = 1;
+}
 
+/************************************************* 
+@Description:rtc停止计数
+@Input:
+@Output:无
+@Return:无
+*************************************************/  
+void rtc0_stop(void)
+{
+	NRF_RTC0->TASKS_STOP = 1;
+}
 /*
-Description:广播间隔增加0~7.65ms的随机延时
-Input:无
-Output:无
-Return:无
+@Description:广播间隔增加0~7.65ms的随机延时
+@Input:无
+@Output:无
+@Return:无
 */
 void rtc_update_interval(void)
 {
@@ -77,10 +100,10 @@ void rtc_update_interval(void)
 	NRF_RTC0->CC[0] = rtc_base + advDelay;
 }
 /*
-Description:启动外部晶振
-Input:无
-Output:无
-Return:无
+@Description:启动外部晶振
+@Input:无
+@Output:无
+@Return:无
 */
 void xosc_hfclk_start(void)
 {
@@ -105,10 +128,10 @@ void xosc_hfclk_start(void)
 }
 
 /*
-Description:关闭外部晶振
-Input:无
-Output:无
-Return:无
+@Description:关闭外部晶振
+@Input:无
+@Output:无
+@Return:无
 */
 void xosc_hfclk_stop(void)
 {
@@ -118,82 +141,84 @@ void xosc_hfclk_stop(void)
 		NRF_CLOCK->TASKS_HFCLKSTOP = 1;
 	}		
 }
+/*
+@Description:定时器初始化
+@Input:毫秒精确定时
+@Output:无
+@Return:无
+*/
+void timer0_init(uint8_t delayms)
+{
+	NRF_TIMER0->SHORTS     = (TIMER_SHORTS_COMPARE0_CLEAR_Enabled << TIMER_SHORTS_COMPARE0_CLEAR_Pos);
+    NRF_TIMER0->MODE           = TIMER_MODE_MODE_Timer;        // Set the timer in Timer Mode.
+	NRF_TIMER0->TASKS_CLEAR    = 1;                            // clear the task first to be usable for later.
+    NRF_TIMER0->PRESCALER      = 4;                            // 1us
+    NRF_TIMER0->BITMODE        = (TIMER_BITMODE_BITMODE_24Bit << TIMER_BITMODE_BITMODE_Pos); // 16 bit mode.
+    NRF_TIMER0->INTENSET      = (TIMER_INTENSET_COMPARE0_Enabled<<TIMER_INTENSET_COMPARE0_Pos);
+	NRF_TIMER0->CC[0]       = (uint32_t)delayms * 1000;
+//	NRF_TIMER0->TASKS_START    = 1; // Start timer. 
+	NVIC_SetPriority(TIMER0_IRQn, 2);
+	NVIC_EnableIRQ(TIMER0_IRQn);
+}
+/*
+@Description:定时器启动计数
+@Input:
+@Output:无
+@Return:无
+*/
+void timer0_start(void)
+{
+	NRF_TIMER0->TASKS_START = 1;
+}
+/*
+@Description:定时器停止计数
+@Input:
+@Output:无
+@Return:无
+*/	
+void timer0_stop(void)
+{
+	NRF_TIMER0->TASKS_START = 1;
+}
+	
 
-#ifdef TFN118A
-/*
-Description:震动马达初始化
-Input:无
-Output:无
-Return:无
-*/
-void motor_init(void)
-{
-	NRF_GPIO->PIN_CNF[Motor_Pin_Num] = (GPIO_PIN_CNF_SENSE_Disabled << GPIO_PIN_CNF_SENSE_Pos)
-										| (GPIO_PIN_CNF_DRIVE_S0S1 << GPIO_PIN_CNF_DRIVE_Pos)
-										| (GPIO_PIN_CNF_PULL_Disabled << GPIO_PIN_CNF_PULL_Pos)
-										| (GPIO_PIN_CNF_INPUT_Connect << GPIO_PIN_CNF_INPUT_Pos)
-										| (GPIO_PIN_CNF_DIR_Output << GPIO_PIN_CNF_DIR_Pos);	
-}
-/*
-Description:震动马达状态
-Input:state :1:马达震动 0:马达停止震动
-Output:无
-Return:无
-*/
-void motor_run_state(u8 state)
-{
-	if( 1 == state )
-		Motor_Run;
-	else
-		Motor_Stop;
-}
 
 /*
-Description:电量采集初始化
-Input:无
-Output:无
-Return:无
+@Description:串口初始化
+@Input:无
+@Output:无
+@Return:无
 */
-void battery_check_init(void)
+void UART_Init(void)
 {
-    NRF_ADC->CONFIG = (ADC_CONFIG_RES_10bit << 0)//精度10位
-                  | (0 << 2) //ADC测量值等于输入
-                  | (0 << 5) //选择内部1.2V为参考电压
-                  | (ADC_Pin_Num << 8);//配置采样脚
- 
-    NRF_ADC->ENABLE = 0x01; 
+    simple_uart_config(RTS_PIN_NUMBER, TX_PIN_NUMBER, CTS_PIN_NUMBER, RX_PIN_NUMBER, HWFC);  
+	NRF_UART0->INTENSET = (UART_INTENSET_RXDRDY_Enabled << UART_INTENSET_RXDRDY_Pos)
+						|(UART_INTENSET_ERROR_Enabled << UART_INTENSET_ERROR_Pos);
+	NVIC_SetPriority(UART0_IRQn, UART0_PRIORITY);
+    NVIC_EnableIRQ(UART0_IRQn);
 }
-/*
-Description:电量采集
+
+/************************************************* 
+Description:app初始化
 Input:无
 Output:
 Return:无
-*/
-u8 battery_check_read(void)
+*************************************************/ 
+void app_init(void)
 {
-		uint8_t adc_value,bat_range;
-		if(adc_value < OneThreshold )
-		{
-			bat_range = battery_OneFifth;
-		}
-		else if(adc_value < TwoThreshold)
-		{
-			bat_range = battery_TwoFifth;
-		}
-		else if(adc_value < ThreeThreshold)
-		{
-			bat_range = battery_ThreeFifth;
-		}
-		else if(adc_value < FourThreshold)
-		{
-			bat_range = battery_FourFifth;
-		}
-		else
-		{
-			
-		}
-		return bat_range;
+	SystemParaInit();
+	UART_Init();
+	#ifdef LOG_ON
+	debug_log_init();
+	#endif
+//	debug_printf("app_reader start");
+	Radio_Init();//射频初始化
+	TID_RECORD_Clear();//清空缓存
+	timer0_init(TIM0_TIME);//50ms定时
+	radio_select(DATA_CHANNEL,RADIO_RX);//进入接收状态
+	timer0_start();//开始计数
 }
-#endif
+
+
 
 

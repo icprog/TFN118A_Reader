@@ -1,7 +1,8 @@
 #include "app_var.h"
 #include "nrf_nvmc.h"
+#include "app_msg.h"
 //设备ID
-uint8_t DeviceID[4] = {0xff,0x00,0x00,0x01};
+uint8_t DeviceID[4] = {0x33,0x33,0x33,0x33};
 /********************************************
 					自定义FLASH存储区
 ********************************************/
@@ -10,17 +11,17 @@ const uint8_t nvmc_flash_mark[11]={0x54,0x46,0x4E,0x31,0x31,0x38,0x41,0x00,0x00,
 uint32_t nrf_addr;//flash地址
 uint8_t Rom_Record_Offset[4] = {16,16,32,32};//4个扇区对应的最大偏移量,分别对应参数区、保留区、用户区1、用户区2
 uint8_t Rom_Record_Length[4] = {16,16,16,16};//每条记录对应的字节数
-uint8_t ActiveMode;//周期发送秒标志
+
+Para_Typedef Reader_Para;
+
+
+#define delay_interval   40  //40ms
 
 //设备运行默认参数
 const uint8_t  para_default[PARA_RECORD_LEN] = 
 {
 16,//短号
-0x60,//b7~4-发射功率0dbm
-0xf1,//b7~b4 信息来源，默认不携带信息 b3~b0 工作模式 ，默认活动模式
-0x00,//心率传感
-0x00,//b7-6,单位，分，b5-0，采样周期值，5分钟
-0
+0x60,//b7~4-发射功率0dbm,不使能周期发送
 };
 //以下几个参数用来记录ROM中的16/32块（偏移量）的计数值 值16/32，表示记录个数，0表示未记录
 //255扇区打标记0x3fc00
@@ -34,6 +35,8 @@ uint8_t	ROM1_Pos;		//倒数第三个扇区，保留区
 uint8_t	ROM2_Pos;	  	//倒数第四个扇区，用户区1
 uint8_t	ROM3_Pos;   	//倒数第五个扇区,用户区2
 uint8_t *pROM_Pos;			//记录指针
+
+ROM_BaseAddr_Typedef   ROM_BaseAddr;//ROM基地址定义
 // uint8_t	* caucpROM[]={&ROM0_Pos,&ROM1_Pos,&ROM2_Pos,&ROM3_Pos};	
 //存储内部参数 
 uint8_t para_record[PARA_RECORD_LEN];
@@ -105,13 +108,15 @@ void UpdateRunPara(void)
 {
 //	uint16_t unit;
 //	uint8_t time;
-	//工作模式：活动，或保留 1:活动模式
-	ActiveMode = (para_record[TAGP_WORKMODE_IDX] & TAGP_WORKMODE_Msk) >> TAGP_WORKMODE_Pos;
-	
-	if(ActiveMode)
-		radio_pwr((para_record[TAGP_PWR_IDX] & TAGP_PWR_Msk) >> TAGP_PWR_Pos);
+	//发射功率
+	Reader_Para.tx_pwr = ((para_record[P_PWR_IDX] & P_PWR_Msk) >> P_PWR_Pos);
+	radio_pwr(Reader_Para.tx_pwr);
+	//周期发送
+	Reader_Para.radio_cycle_time = ((para_record[READERP_SENDTIME_IDX] & READERP_SENDTIME_Msk) >> READERP_SENDTIME_Pos)*TIM0_TIME;
+	if(Reader_Para.radio_cycle_time)
+		Reader_Para.radio_time_cnt_en = 1;
 	else
-	radio_pwr(TAGP_PWR_N4DBM);	
+		Reader_Para.radio_time_cnt_en = 0;
 }
 
 /*********************************************************
@@ -139,25 +144,25 @@ uint8_t Read_Para(File_Typedef f1_para,uint8_t *p_packet)
 		case FILE_MODE_PARA://内部参数区
 				max_offset = Rom_Record_Offset[0];
 				max_length = Rom_Record_Length[0];	
-				nrf_addr = PARA_BASE;//基地址
+				nrf_addr = ROM_BaseAddr.PARA_BASE;//基地址
 				pROM_Pos = &ROM0_Pos;//最新记录
 			break;
 		case FILE_MODE_RESERVER://保留区
 				max_offset = Rom_Record_Offset[1];
 				max_length = Rom_Record_Length[1];
-				nrf_addr = RESERVER_BASE;
+				nrf_addr = ROM_BaseAddr.RESERVER_BASE;
 				pROM_Pos = &ROM1_Pos;
 			break;
 		case FILE_MODE_USER1://用户区1
 				max_offset = Rom_Record_Offset[2];
 				max_length = Rom_Record_Length[2];			
-				nrf_addr = USER1_BASE;
+				nrf_addr = ROM_BaseAddr.USER1_BASE;
 				pROM_Pos = &ROM2_Pos;
 			break;
 		case FILE_MODE_USER2://用户区2
 				max_offset = Rom_Record_Offset[3];
 				max_length = Rom_Record_Length[3];		
-				nrf_addr = USER2_BASE;
+				nrf_addr = ROM_BaseAddr.USER2_BASE;
 				pROM_Pos = &ROM3_Pos;
 			break; 
 		default:
@@ -165,14 +170,15 @@ uint8_t Read_Para(File_Typedef f1_para,uint8_t *p_packet)
 			break;
 	}
 	//长度和偏移量边界检查
-	if(f1_para.length>max_length || (f1_para.offset>max_offset && f1_para.offset<FILE_OFFSET_RNEW))
+	if(f1_para.length>=max_length || (f1_para.offset>=max_offset && f1_para.offset<FILE_OFFSET_RNEW))
 	{
 		cmd_state = FILE_ERR << 8 | FILE_BODER_ERR;
 	}
 	//命令错误
 	if(cmd_state!=CMD_RUN_SUCCESS)
 	{
-		my_memcpy(&p_packet[EXCUTE_STATE_IDX],&cmd_state,EXCUTE_STATE_LENGTH);
+		p_packet[EXCUTE_STATE_IDX] = cmd_state>>8;
+		p_packet[EXCUTE_STATE_IDX+1] = cmd_state;
 		return FALSE;
 	}
 	else
@@ -198,6 +204,7 @@ uint8_t Read_Para(File_Typedef f1_para,uint8_t *p_packet)
 	nrf_nvmc_read_bytes(nrf_addr, &p_packet[FILE_RDATA_IDX],f1_para.length);
 	return TRUE;
 }
+
 /*********************************************************
 Description:参数检查
 Input:state : 
@@ -210,14 +217,19 @@ uint8_t para_check(uint8_t mode,uint8_t *pdata)
 	{
 		case FILE_MODE_PARA://内部参数区
 			if(pdata[TAGP_BRIEFNUM_IDX]>TAGP_BRIEFNUM_MAX_VALUE  
-			||(pdata[TAGP_PWR_IDX]>>TAGP_PWR_Pos)>TAGP_PWR_MAX_VALUE 
+			||(pdata[P_PWR_IDX]>>P_PWR_Pos)>P_PWR_MAX_VALUE 
 			||(pdata[TAGP_WORKMODE_IDX]&TAGP_WORKMODE_Msk)>TAGP_WORKMODE_MAX_VALUE)
 			{
 				return FALSE;
 			}
 			break;
+		case FILE_MODE_RESERVER:
+		case FILE_MODE_USER1:
+		case FILE_MODE_USER2:
+			break;
 		default:
-			return FALSE;
+			cmd_state = FILE_ERR <<8 | FILE_MODE_ERR;
+			return TRUE;
 	}
 	return TRUE;
 }
@@ -251,25 +263,25 @@ uint8_t Write_Para(File_Typedef f1_para,uint8_t *p_packet)
 		case FILE_MODE_PARA:
 				max_offset = Rom_Record_Offset[0];		
 				max_length = Rom_Record_Length[0];	
-				nrf_addr = PARA_BASE;//基地址
+				nrf_addr = ROM_BaseAddr.PARA_BASE;//基地址
 				pROM_Pos = &ROM0_Pos;
 			break;
 		case FILE_MODE_RESERVER:
 				max_offset = Rom_Record_Offset[1];		
 				max_length = Rom_Record_Length[1];
-				nrf_addr = RESERVER_BASE;//基地址
+				nrf_addr = ROM_BaseAddr.RESERVER_BASE;//基地址
 				pROM_Pos = &ROM1_Pos;
 			break;
 		case FILE_MODE_USER1:
 				max_offset = Rom_Record_Offset[2];		
 				max_length = Rom_Record_Length[2];			
-				nrf_addr = USER1_BASE;//基地址
+				nrf_addr = ROM_BaseAddr.USER1_BASE;//基地址
 				pROM_Pos = &ROM2_Pos;
 			break;
 		case FILE_MODE_USER2:
 				max_offset = Rom_Record_Offset[3];		
 				max_length = Rom_Record_Length[3];		
-				nrf_addr = USER2_BASE;//基地址
+				nrf_addr = ROM_BaseAddr.USER2_BASE;//基地址
 				pROM_Pos = &ROM3_Pos;
 			break;
 		default:
@@ -298,7 +310,8 @@ uint8_t Write_Para(File_Typedef f1_para,uint8_t *p_packet)
 	//错误，返回
 	if(cmd_state!=CMD_RUN_SUCCESS)
 	{
-		my_memcpy(&p_packet[EXCUTE_STATE_IDX],&cmd_state,EXCUTE_STATE_LENGTH);
+		p_packet[EXCUTE_STATE_IDX] = cmd_state>>8;
+		p_packet[EXCUTE_STATE_IDX+1] = cmd_state;
 		return FALSE;
 	}
 	else
@@ -309,16 +322,47 @@ uint8_t Write_Para(File_Typedef f1_para,uint8_t *p_packet)
 			*pROM_Pos = 0;//更新最新偏移量
 		}
 		nrf_addr += *pROM_Pos*max_length;
-		nrf_nvmc_write_bytes(nrf_addr,&p_packet[FILE_WDATA_IDX],f1_para.length);		
+		nrf_nvmc_write_bytes(nrf_addr,&p_packet[FILE_WDATA_IDX],f1_para.length);
+		(*pROM_Pos)++;
+		if(f1_para.mode == FILE_MODE_PARA)//更新参数
+		{
+			my_memcpy(para_record,&p_packet[FILE_WDATA_IDX],16);
+			UpdateRunPara();
+		}
 	}
 	return TRUE;
 }
 
+
+/************************************************* 
+@Description:获取文件操作地址
+@Input:无
+@Output:无
+@Return:无
+*************************************************/ 
+void System_Addr_Init(void)
+{
+	ROM_BaseAddr.page_size = NRF_FICR->CODEPAGESIZE;
+	ROM_BaseAddr.page_num  = NRF_FICR->CODESIZE - 1;
+	
+	ROM_BaseAddr.MARK_BASE = ROM_BaseAddr.page_size * ROM_BaseAddr.page_num;
+	
+	//para area
+	ROM_BaseAddr.PARA_BASE = ROM_BaseAddr.page_size * (ROM_BaseAddr.page_num-1);
+	//reserved area
+	ROM_BaseAddr.RESERVER_BASE = ROM_BaseAddr.page_size * (ROM_BaseAddr.page_num-2);
+	//user area1
+	ROM_BaseAddr.USER1_BASE = ROM_BaseAddr.page_size * (ROM_BaseAddr.page_num-3);
+	//user area2
+	ROM_BaseAddr.USER2_BASE = ROM_BaseAddr.page_size * (ROM_BaseAddr.page_num-4);
+}
+
+
 /*
-Description:获取系统运行参数，及获取参数区、保留区、用户区最新参数偏移量
-Input:state : 
-Output:
-Return:无
+@Description:获取系统运行参数，及获取参数区、保留区、用户区最新参数偏移量
+@Input:state : 
+@Output:
+@Return:无
 */
 void SystemParaInit(void)
 {
@@ -326,7 +370,10 @@ void SystemParaInit(void)
 	uint8_t base_offset;
 	uint8_t flash_temp[11];//temp memory
 	GetDeviceID();//获取设备ID
-	nrf_addr = MARK_BASE;
+	
+	System_Addr_Init();//获取基地址
+	MSG_Addr_Init();//获取消息存储地址
+	nrf_addr = ROM_BaseAddr.MARK_BASE;
 	nrf_nvmc_read_bytes(nrf_addr,flash_temp,11);
 	//最后一个扇区用来打标记，如果空，则清空ROM0_Pos-ROM5存储区,判断是否是新下载的程序
 	if((flash_temp[0]!=nvmc_flash_mark[0])||(flash_temp[1]!=nvmc_flash_mark[1])||(flash_temp[2]!=nvmc_flash_mark[2])
@@ -334,19 +381,19 @@ void SystemParaInit(void)
 		||(flash_temp[6]!=nvmc_flash_mark[6])||(flash_temp[7]!=nvmc_flash_mark[7])||(flash_temp[8]!=nvmc_flash_mark[8])
 		||(flash_temp[9]!=nvmc_flash_mark[9])||(flash_temp[10]!=nvmc_flash_mark[10]))
 	{			 
-		nrf_addr = PARA_BASE;		
+		nrf_addr = ROM_BaseAddr.PARA_BASE;		
 		nrf_nvmc_page_erase(nrf_addr);
 
-		nrf_addr = RESERVER_BASE;
+		nrf_addr = ROM_BaseAddr.RESERVER_BASE;
 		nrf_nvmc_page_erase(nrf_addr);
 
-		nrf_addr = USER1_BASE;
+		nrf_addr = ROM_BaseAddr.USER1_BASE;
 		nrf_nvmc_page_erase(nrf_addr);
 
-		nrf_addr = USER2_BASE;
+		nrf_addr = ROM_BaseAddr.USER2_BASE;
 		nrf_nvmc_page_erase(nrf_addr);
 
-		nrf_addr = MARK_BASE;
+		nrf_addr = ROM_BaseAddr.MARK_BASE;
 		nrf_nvmc_page_erase(nrf_addr);
 				
 		nrf_nvmc_write_bytes(nrf_addr,nvmc_flash_mark,11);
@@ -355,21 +402,23 @@ void SystemParaInit(void)
 	{
 		//打过标记读取上次存储的信息
 		//内部参数区
-		nrf_addr = PARA_BASE;
+		nrf_addr = ROM_BaseAddr.PARA_BASE;
 		ROM0_Pos = Rom_Pos(nrf_addr,Rom_Record_Offset[0],Rom_Record_Length[0]);
 		//reserver area
-		nrf_addr = RESERVER_BASE;
+		nrf_addr = ROM_BaseAddr.RESERVER_BASE;
 		ROM1_Pos = Rom_Pos(nrf_addr,Rom_Record_Offset[1],Rom_Record_Length[1]);
 		//user area1
-		nrf_addr = USER1_BASE;
+		nrf_addr = ROM_BaseAddr.USER1_BASE;
 		ROM2_Pos = Rom_Pos(nrf_addr,Rom_Record_Offset[2],Rom_Record_Length[2]);
 		//user area2
-		nrf_addr = USER2_BASE;
-		ROM3_Pos = Rom_Pos(nrf_addr,Rom_Record_Offset[3],Rom_Record_Length[3]);				
+		nrf_addr = ROM_BaseAddr.USER2_BASE;
+		ROM3_Pos = Rom_Pos(nrf_addr,Rom_Record_Offset[3],Rom_Record_Length[3]);			
+
+		MSG_Find_New();		
 	}
 	if(ROM0_Pos)//更新过参数
 	{
-		nrf_addr = PARA_BASE;
+		nrf_addr = ROM_BaseAddr.PARA_BASE;
 		base_offset = (ROM0_Pos - 1)*Rom_Record_Length[0];
 		nrf_nvmc_read_bytes(nrf_addr+base_offset,para_record,Rom_Record_Length[0]);
 	}		

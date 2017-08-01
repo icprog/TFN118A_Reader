@@ -25,7 +25,7 @@
 #define PACKET_LENGTH_FIELD_SIZE         (8UL)  /**< Packet length field size in bits. */
 
 uint8_t packet[PACKET_PAYLOAD_MAXSIZE];
-//uint8_t radio_status = RADIO_STATUS_IDLE;
+uint8_t radio_status = RADIO_STATUS_IDLE;
 /** 
  * @brief Function for configuring the radio to operate in Shockburst compatible mode.
  * 
@@ -81,7 +81,7 @@ void radio_configure()
 	//数据高位在先
 	//静态地址为4，意味着比LENGTH filed所定义的包长度多四
 	//PAYLOAD最大长度为32
-    NRF_RADIO->PCNF1 = (RADIO_PCNF1_WHITEEN_Disabled << RADIO_PCNF1_WHITEEN_Pos) |    
+    NRF_RADIO->PCNF1 = (RADIO_PCNF1_WHITEEN_Enabled << RADIO_PCNF1_WHITEEN_Pos) |    
                        (RADIO_PCNF1_ENDIAN_Big       << RADIO_PCNF1_ENDIAN_Pos)  |
                        (PACKET_BASE_ADDRESS_LENGTH   << RADIO_PCNF1_BALEN_Pos)   |
                        (PACKET_STATIC_LENGTH         << RADIO_PCNF1_STATLEN_Pos) |
@@ -125,7 +125,7 @@ void Radio_Init(void)
     NRF_RADIO->INTENSET     |= RADIO_INTENSET_END_Set << RADIO_INTENSET_END_Pos;
 	 
     NVIC_ClearPendingIRQ(RADIO_IRQn);
-		NVIC_SetPriority(RADIO_IRQn, 1);
+	NVIC_SetPriority(RADIO_IRQn, RADIO_PRIORITY);
     NVIC_EnableIRQ(RADIO_IRQn);
 		
 }
@@ -133,24 +133,21 @@ void Radio_Init(void)
 void radio_disable(void)
 {
 	uint32_t ot;
-//	if(radio_status != RADIO_STATUS_IDLE)
-//	{
-	if(NRF_RADIO->STATE != RADIO_STATE_STATE_Disabled)
+	if(radio_status != RADIO_STATUS_IDLE)
 	{
-    NRF_RADIO->SHORTS          = 0;
-    NRF_RADIO->EVENTS_DISABLED = 0;
-    NRF_RADIO->TASKS_DISABLE   = 1;
-    while (NRF_RADIO->EVENTS_DISABLED == 0)
-    {
+		NRF_RADIO->SHORTS          = 0;
+		NRF_RADIO->EVENTS_DISABLED = 0;
+		NRF_RADIO->TASKS_DISABLE   = 1;
+		while (NRF_RADIO->EVENTS_DISABLED == 0)
+		{
 			ot++;
 			if(ot > RADIO_OVER_TIME)
-				break;
-        // Do nothing.
-    }
-    NRF_RADIO->EVENTS_DISABLED = 0;
+				return;
+			// Do nothing.
+		}
+		NRF_RADIO->EVENTS_DISABLED = 0;
+		radio_status = RADIO_STATUS_IDLE;
 	}
-//		radio_status = RADIO_STATUS_IDLE;
-//	}
 }
 
 
@@ -181,7 +178,7 @@ void radio_modulated_tx_carrier(uint8_t txpower, uint8_t mode, uint8_t channel)
     NRF_RADIO->MODE       = (mode << RADIO_MODE_MODE_Pos);
     NRF_RADIO->FREQUENCY  = channel;
     NRF_RADIO->TASKS_TXEN = 1;
-//		radio_status = RADIO_STATUS_TX;
+	radio_status = RADIO_STATUS_TX;
 }
 
 void radio_tx_carrier( uint8_t mode, uint8_t channel)
@@ -193,7 +190,7 @@ void radio_tx_carrier( uint8_t mode, uint8_t channel)
     NRF_RADIO->FREQUENCY  = channel;
 
     NRF_RADIO->TASKS_TXEN = 1;
-//		radio_status = RADIO_STATUS_TX;
+	radio_status = RADIO_STATUS_TX;
 }
 
 /**
@@ -209,6 +206,6 @@ void radio_rx_carrier(uint8_t mode, uint8_t channel)
     NRF_RADIO->FREQUENCY  = channel;
 	NRF_RADIO->MODE       = (mode << RADIO_MODE_MODE_Pos);
     NRF_RADIO->TASKS_RXEN = 1;
-//		radio_status = RADIO_STATUS_RX;
+	radio_status = RADIO_STATUS_RX;
 }
 
