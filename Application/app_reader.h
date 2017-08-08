@@ -5,6 +5,7 @@ typedef enum
 	Idle,
 	List_Tag,
 	List_Reader,
+	Auto_Reoprt,
 	File_Deal,
 	Tag_Report,
 	Msg_Deal,

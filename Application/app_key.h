@@ -2,8 +2,8 @@
 #define _KEY_H
 
 #ifdef TFN118A
-extern void key_init(void);//°´¼ü³õÊ¼»¯
-extern void key_scan(void);//°´¼üÉ¨Ãè
+extern void key_init(void);//æŒ‰é”®åˆå§‹åŒ–
+extern void key_scan(void);//æŒ‰é”®æ‰«æ
 #endif
 
 #endif

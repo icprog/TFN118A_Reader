@@ -3,31 +3,31 @@
 #include "sys.h"
 
 /**********************************************
-Ã¿¸ö´æ´¢ÇøÏûÏ¢´æ´¢¸ñÊ½
-ÏûÏ¢ĞòºÅ+ÏûÏ¢³¤¶È+ÏûÏ¢ÄÚÈİ
-ÏûÏ¢ĞòºÅÈ¡Öµ·¶Î§0~7
-ÏûÏ¢³¤¶ÈÈ¡Öµ·¶Î§0~128
+æ¯ä¸ªå­˜å‚¨åŒºæ¶ˆæ¯å­˜å‚¨æ ¼å¼
+æ¶ˆæ¯åºå·+æ¶ˆæ¯é•¿åº¦+æ¶ˆæ¯å†…å®¹
+æ¶ˆæ¯åºå·å–å€¼èŒƒå›´0~7
+æ¶ˆæ¯é•¿åº¦å–å€¼èŒƒå›´0~128
 **********************************************/
 #define MSG_IDX_MAX_Value 2
 #define MSG_SEQ_IDX   0
 #define MSG_LEN_IDX   1
 #define MSG_STORE_IDX 2
-#define MSG_PKT_MAX_LEN 130 //4°ü£¬Ã¿°ü×î´ó32×Ö½Ú£¬ÏûÏ¢Í·2×Ö½Ú
+#define MSG_PKT_MAX_LEN 130 //4åŒ…ï¼Œæ¯åŒ…æœ€å¤§32å­—èŠ‚ï¼Œæ¶ˆæ¯å¤´2å­—èŠ‚
 #define MSG_MAX_LEN 128
 #define MSG_FLASH_HEAD_LEN 2
-#define MSG_SEQ_MAX_NUM 8   //ÏûÏ¢ĞòºÅÎª0~7£¬Òò´ËÎª8
-#define MSG_FLASH_NUM 3		//×î¶à´æ´¢3ÌõÏûÏ¢
-#define MSG_PACKET_MAX_VALUE 32   //ÉäÆµÏÂ·¢Ò»°üÏûÏ¢×î´óÖµ
-#define MSG_PACKET_OFFSET    5  //ÏûÏ¢³¤¶È/32
+#define MSG_SEQ_MAX_NUM 8   //æ¶ˆæ¯åºå·ä¸º0~7ï¼Œå› æ­¤ä¸º8
+#define MSG_FLASH_NUM 3		//æœ€å¤šå­˜å‚¨3æ¡æ¶ˆæ¯
+#define MSG_PACKET_MAX_VALUE 32   //å°„é¢‘ä¸‹å‘ä¸€åŒ…æ¶ˆæ¯æœ€å¤§å€¼
+#define MSG_PACKET_OFFSET    5  //æ¶ˆæ¯é•¿åº¦/32
 
-//ÏûÏ¢Ë÷ÒıºÅ
+//æ¶ˆæ¯ç´¢å¼•å·
 typedef enum
 {
 	MSG1_IDX=0,
 	MSG2_IDX=1,
 	MSG3_IDX=2
 }MSG_IDX_Typedef;
-//ÏûÏ¢×´Ì¬
+//æ¶ˆæ¯çŠ¶æ€
 typedef enum
 {
 	MSG_IDLE=0,
@@ -41,18 +41,18 @@ typedef enum
 
 typedef struct
 {
-	uint32_t MSG1_ROM;//ÏûÏ¢1µØÖ·
-	uint32_t MSG2_ROM;//ÏûÏ¢2µØÖ·
-	uint32_t MSG3_ROM;//ÏûÏ¢3µØÖ·
-	uint32_t NEW_MSG_ROM;//Ö¸Ê¾×îĞÂÏûÏ¢
+	uint32_t MSG1_ROM;//æ¶ˆæ¯1åœ°å€
+	uint32_t MSG2_ROM;//æ¶ˆæ¯2åœ°å€
+	uint32_t MSG3_ROM;//æ¶ˆæ¯3åœ°å€
+	uint32_t NEW_MSG_ROM;//æŒ‡ç¤ºæœ€æ–°æ¶ˆæ¯
 	uint32_t *MSG_ADDR[3];
-	uint8_t MSG_BUFF[MSG_PKT_MAX_LEN];	//ÏûÏ¢×î´ó×Ö½Ú
-	uint8_t MSG_BUFF_IDX;//»º³åË÷ÒıºÅ
-	uint8_t MSG_PUSH[MSG_PKT_MAX_LEN];  //´æ´¢ÒªÏÂ·¢µÄÏûÏ¢
-	uint8_t MSG_Seq;	//ÏûÏ¢ĞòºÅ£¬¸üĞÂ´«¸ĞÊı¾İ
-	uint8_t MSG_Len;//Ò»ÌõÏûÏ¢³¤¶È
-	uint8_t MSG_Num; //ÏûÏ¢ÊıÁ¿
-	uint8_t MSG_IDX; //ÏûÏ¢Ë÷Òı0~2
+	uint8_t MSG_BUFF[MSG_PKT_MAX_LEN];	//æ¶ˆæ¯æœ€å¤§å­—èŠ‚
+	uint8_t MSG_BUFF_IDX;//ç¼“å†²ç´¢å¼•å·
+	uint8_t MSG_PUSH[MSG_PKT_MAX_LEN];  //å­˜å‚¨è¦ä¸‹å‘çš„æ¶ˆæ¯
+	uint8_t MSG_Seq;	//æ¶ˆæ¯åºå·ï¼Œæ›´æ–°ä¼ æ„Ÿæ•°æ®
+	uint8_t MSG_Len;//ä¸€æ¡æ¶ˆæ¯é•¿åº¦
+	uint8_t MSG_Num; //æ¶ˆæ¯æ•°é‡
+	uint8_t MSG_IDX; //æ¶ˆæ¯ç´¢å¼•0~2
 
 }MSG_Store_Typedef;
 

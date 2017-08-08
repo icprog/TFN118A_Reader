@@ -2,7 +2,7 @@
 #define _APP_UART
 #include "sys.h"
 
-/*----------------´®¿Ú¶¨Òå------------------*/
+/*----------------ä¸²å£å®šä¹‰------------------*/
 #define head_bytes 2
 #define len_bytes  2
 #define crc_bytes 2
@@ -11,31 +11,32 @@
 #define pkt_head2 0xAA
 #define U_PROTOCOL_VER 0X00
 /****************************************************
-´®¿ÚÍ¨ĞÅ ÉÏÎ»»ú->½ÓÊÕÆ÷
-ÃèÊö	Ö¡Í·	³¤¶È	Ğ­Òé°æ±¾	¶ÁĞ´Æ÷ID	¶¨Î»ĞÅÏ¢	Ğ­ÒéÁ÷Ë®ºÅ 
+ä¸²å£é€šä¿¡ ä¸Šä½æœº->æ¥æ”¶å™¨
+æè¿°	å¸§å¤´	é•¿åº¦	åè®®ç‰ˆæœ¬	è¯»å†™å™¨ID	å®šä½ä¿¡æ¯	åè®®æµæ°´å· 
 IDX		0~1		2~3	 	4			5~8			9			10
-ÃèÊö	ÃüÁî×Ö	ĞÅÏ¢ÄÚÈİ
+æè¿°	å‘½ä»¤å­—	ä¿¡æ¯å†…å®¹
 IDX		11		12
 
 ******************************************************/
 #define U_HEAD_LEN 2
 #define U_LENTH_LEN 2
 #define U_ID_LEN 4
+#define U_STATE_LEN 2
 #define U_PROTOCOL_LEN 1
-#define U_ConfigOT_LEN 1   //ÏÂ·¢ÅäÖÃÖ¸Áî£¬³¬Ê±×Ö½Ú
+#define U_ConfigOT_LEN 1   //ä¸‹å‘é…ç½®æŒ‡ä»¤ï¼Œè¶…æ—¶å­—èŠ‚
 #define U_HEADER_IDX 0
 #define U_LEN_IDX 2
 #define U_PROTOCOL_IDX 4
 #define U_ID_IDX 5
 #define	U_GPS_IDX 9
 
-#define U_FIX_LEN 6 //Ö¡³¤2+³¤¶È2+Ğ£Ñé
-#define U_AfterLEN_FIX_LEN (U_ID_LEN+1+1+1+1) //buf[2] - U_ReaderFIX_LEN = ĞÅÏ¢ÄÚÈİ³¤¶È
+#define U_FIX_LEN 6 //å¸§é•¿2+é•¿åº¦2+æ ¡éªŒ
+#define U_AfterLEN_FIX_LEN (U_ID_LEN+1+1+1+1) //buf[2] - U_ReaderFIX_LEN = ä¿¡æ¯å†…å®¹é•¿åº¦
 /****************************************************
-´®¿ÚÍ¨ĞÅ ½ÓÊÕÆ÷->ÉÏÎ»»ú
-ÃèÊö	Ö¡Í·	³¤¶È	Ğ­Òé°æ±¾ 	¶ÁĞ´Æ÷ID	¶¨Î»ĞÅÏ¢	Ğ­ÒéÁ÷Ë®ºÅ 
+ä¸²å£é€šä¿¡ æ¥æ”¶å™¨->ä¸Šä½æœº
+æè¿°	å¸§å¤´	é•¿åº¦	åè®®ç‰ˆæœ¬ 	è¯»å†™å™¨ID	å®šä½ä¿¡æ¯	åè®®æµæ°´å· 
 IDX		0~1		2~3	 	4			5~8			9/9~36		10/37
-ÃèÊö	ÃüÁî×Ö	ĞÅÏ¢ÄÚÈİ
+æè¿°	å‘½ä»¤å­—	ä¿¡æ¯å†…å®¹
 IDX		11/38	12/39
 
 ******************************************************/
@@ -53,57 +54,96 @@ IDX		11/38	12/39
 #define U_CMD_IDX 11
 #define U_DATA_IDX 12
 #define U_FileData_IDX (U_CMD_IDX+6)
+#define U_FileTimeOut_IDX (U_CMD_IDX+5)
 #endif	
 /****************************************************
-ÃüÁî 	Ğ´ÎÄ¼ş
-ÃüÁî×Ö	0x22
+å‘½ä»¤ 	å†™æ–‡ä»¶
+å‘½ä»¤å­—	0x22
 
 ******************************************************/
 typedef enum
 {
-	U_CMD_LIST_TAG,
-	U_CMD_LIST_READER,
+	U_CMD_LIST_TAG=0XF4,//åˆ—å‡ºæ ‡ç­¾
+	U_CMD_LIST_READER=0XF5,
+	U_CMD_AUTO_REPORT=0XF6,
 	U_CMD_WRITE_FILE = 0XF0,
 	U_CMD_READ_FILE = 0XF1,
 	U_CMD_MSG_PUSH = 0X89,
-	U_CMD_TIME_SET = 0X90
+	U_CMD_TIME_SET = 0X90,
+	U_CMD_READER_ID = 0XF2    //è¯»å†™å™¨ID
 }U_CMD_Typdef;
-//ÏûÏ¢
 typedef enum
 {
-	U_MSG_ERR = 0X07
-}UMSG_ERR_H_Typedef;
+	U_FILETIME_ERR = 0X0604
+}UFILE_State_Typedef;
+//æ¶ˆæ¯
+typedef enum
+{
+	U_MSG_SUCESS=0X0000,
+	U_MSG_ERR = 0X0700//è¶…å‡ºæœ€å¤§é•¿åº¦
+}UMSG_State_Typedef;
 
-typedef enum
-{
-	U_MSG_BODER_ERR= 0X00//³¬³ö×î´ó³¤¶È
-}UMSG_STATE_L_Typedef;
 #define U_MSG_SUCCESS 0X0000
-#define U_MSG_ACK_LEN 0X000A//ÏûÏ¢ÃüÁî·µ»Ø³¤¶È
+#define U_MSG_ACK_LEN 0X000B//æ¶ˆæ¯å‘½ä»¤è¿”å›é•¿åº¦
 
-//Ê±¼ä
+//æ—¶é—´
 #define U_TIME_SUCCESS 0X0000
 #define U_TIME_ERR 0X0800
-#define U_TIME_ACK_LEN 0X000A//Ê±¼äÃüÁî·µ»Ø³¤¶È
+#define U_TIME_ACK_LEN 0X000A//æ—¶é—´å‘½ä»¤è¿”å›é•¿åº¦
+
+//è·å–è¯»å†™å™¨ID
+
+#define U_READER_ACK_LEN 						0X000C//è¯»å†™å™¨IDå‘½ä»¤è¿”å›é•¿åº¦
+
+//åˆ—å‡ºæ ‡ç­¾æˆ–è€…è¯»å†™å™¨
+typedef struct
+{
+	uint8_t LP_Filter_En;//ä½ç”µè¿‡æ»¤ä½¿èƒ½ 1ï¼šä½¿èƒ½ï¼Œ0ï¼šä¸ä½¿èƒ½
+	uint8_t RSSI_Filter_En;//RSSIè¿‡æ»¤ä½¿èƒ½ 1ï¼šä½¿èƒ½ 0ï¼šä¸ä½¿èƒ½
+	uint8_t RSSI_Filter_Value;//RSSIè¿‡æ»¤å€¼
+}Filter_Typedef;
+#define RADIO_RSSI_NO_Filter 127
+
+#define U_LP_FILTEREN_Pos   0
+#define U_LP_FILTEREN_Msk   0x01  //ä½¿èƒ½ä½ç”µè¿‡æ»¤
+#define U_RSSI_FILTEREN_Pos 7
+#define U_RSSI_FILTEREN_Msk 0x80  //ä½¿èƒ½RSSIè¿‡æ»¤
+#define U_RSSI_FILTERVALUE_Pos 0
+#define U_RSSI_FILTERVALUE_Msk 0x7F  //RSSIè¿‡æ»¤å€¼
+#define U_SEARCH_TIME_Pos     1
+#define U_SEARCH_TIME_Msk     0x0E   //
+#define U_LEAVE_TIME_Msk 0xf0 //ç¦»å¼€æ—¶é—´
+#define U_LEAVE_TIME_Pos 4
+
+//è¶…æ—¶
+typedef struct
+{
+	uint8_t Radio_Time_En;//è®¡æ•°ä½¿èƒ½
+	uint16_t Radio_Time_Cnt;//è®¡æ•°å€¼
+	uint16_t TimeOut_Cycle;//è¶…æ—¶æ—¶é—´
+	uint16_t Radio_SearchT_Cnt;
+	uint8_t LeaveTime;//ç¦»å¼€æ—¶é—´
+}Time_Typedef;
+
 typedef enum 
 {
-	PKT_HEAD1=0,//Ö¡Í·1
-	PKT_HEAD2,//Ö¡Í·2
-	PKT_PUSH_LEN,//Ö¡³¤¶È
-	PKT_DATA,//Êı¾İ
+	PKT_HEAD1=0,//å¸§å¤´1
+	PKT_HEAD2,//å¸§å¤´2
+	PKT_PUSH_LEN,//å¸§é•¿åº¦
+	PKT_DATA,//æ•°æ®
 	PKT_CRC
 }state_typdef;
 
 typedef struct
 {
-	uint8_t rx_state;//½ÓÊÕ×´Ì¬
-	uint8_t has_finished;//½ÓÊÕÍê³É
-	uint8_t rx_idx;//½ÓÊÕË÷ÒıºÅ
-	uint16_t rx_len;//Êı¾İ³¤¶È
-	uint8_t rx_buf[250];//½ÓÊÕ»º³åÇø
-	uint8_t tx_buf[250];//·¢ËÍ»º³åÇø
-	uint16_t len;//³¤¶È
-	uint8_t tx_en;//1£ºÔÊĞí·¢ËÍ
+	uint8_t rx_state;//æ¥æ”¶çŠ¶æ€
+	uint8_t has_finished;//æ¥æ”¶å®Œæˆ
+	uint8_t rx_idx;//æ¥æ”¶ç´¢å¼•å·
+	uint16_t rx_len;//æ•°æ®é•¿åº¦
+	uint8_t rx_buf[250];//æ¥æ”¶ç¼“å†²åŒº
+	uint8_t tx_buf[250];//å‘é€ç¼“å†²åŒº
+	uint16_t len;//é•¿åº¦
+	uint8_t tx_en;//1ï¼šå…è®¸å‘é€
 }UART_Typedef;
 		
 void Uart_Deal(void);

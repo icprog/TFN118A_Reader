@@ -1,6 +1,6 @@
 #include "sys.h"
 
-/*--------------Çå¿ÕBUFF-----------------*/
+/*--------------æ¸…ç©ºBUFF-----------------*/
 void my_memset(u8 *dest,u8 ch,u16 size)
 {
 	u16 i;
@@ -11,10 +11,10 @@ void my_memset(u8 *dest,u8 ch,u16 size)
 }
 
 /*
-Description:¿½±´
+Description:æ‹·è´
 Input:state : 
 Output:
-Return:ÎŞ
+Return:æ— 
 */
 //void my_memcpy(u8 *dest,const u8 * src,u16 size)
 //{
@@ -34,10 +34,10 @@ void *my_memcpy(void* dest,const void* src,u16 size)
 }
 
 /*
-Description:µÃµ½Òì»òÖµ
-Input:src:Ô­Êı×é£¬³¤¶È
+Description:å¾—åˆ°å¼‚æˆ–å€¼
+Input:src:åŸæ•°ç»„ï¼Œé•¿åº¦
 Output:
-Return:ÎŞ
+Return:æ— 
 */
 uint8_t Get_Xor(u8 *src,u16 size)
 {
@@ -50,7 +50,7 @@ uint8_t Get_Xor(u8 *src,u16 size)
 }
 
 
-/*---------------±È½Ïº¯Êı---------------------*/
+/*---------------æ¯”è¾ƒå‡½æ•°---------------------*/
 /*
 if Return value < 0 then it indicates str1 is less than str2.
 if Return value > 0 then it indicates str2 is less than str1.

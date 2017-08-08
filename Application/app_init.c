@@ -4,20 +4,20 @@
 #include "simple_uart.h"
 #include "Debug_log.h"
 
-#define rtc_interval 1  //µ¥Î»s
+#define rtc_interval 1  //å•ä½s
 #define rtc_base ((32768*rtc_interval) - 1)
 /************************************************* 
-@Description:ÅäÖÃµÍÆµÊ±ÖÓÊ±ÖÓÔ´  
+@Description:é…ç½®ä½é¢‘æ—¶é’Ÿæ—¶é’Ÿæº  
 @Input:
-£¨1£©¡¢source : 1:Ñ¡ÔñÍâ²¿¾§Õñ XOSC 0£ºÄÚ²¿rc ROSC
-@Output:ÎŞ
-@Return:ÎŞ
+ï¼ˆ1ï¼‰ã€source : 1:é€‰æ‹©å¤–éƒ¨æ™¶æŒ¯ XOSC 0ï¼šå†…éƒ¨rc ROSC
+@Output:æ— 
+@Return:æ— 
 *************************************************/  
 static void lfclk_init(uint8_t source)
 {
 	uint8_t lfclksrc;
 	NRF_CLOCK->EVENTS_LFCLKSTARTED = 0;
-	//Ñ¡ÔñÊ±ÖÓÔ´
+	//é€‰æ‹©æ—¶é’Ÿæº
 	lfclksrc = source ? CLOCK_LFCLKSRC_SRC_Xtal : CLOCK_LFCLKSRC_SRC_RC;
 	NRF_CLOCK->LFCLKSRC = lfclksrc << CLOCK_LFCLKSRC_SRC_Pos;
 	NRF_CLOCK->TASKS_LFCLKSTART = 1;
@@ -27,10 +27,10 @@ static void lfclk_init(uint8_t source)
 }
 
 /************************************************* 
-@Description:²úÉú0~255Ëæ»úÊı 
-@Input:ÎŞ
-@Output:Êä³öËæ»úÖµ
-@Return:ÎŞ
+@Description:äº§ç”Ÿ0~255éšæœºæ•° 
+@Input:æ— 
+@Output:è¾“å‡ºéšæœºå€¼
+@Return:æ— 
 *************************************************/ 
 //uint8_t rng_value = 0;
 static uint8_t random_vector_generate()
@@ -49,15 +49,15 @@ static uint8_t random_vector_generate()
 //	return rng_value;
 }
 /************************************************* 
-@Description:rtc³õÊ¼»¯  
+@Description:rtcåˆå§‹åŒ–  
 @Input:
-@Output:ÎŞ
-@Return:ÎŞ
+@Output:æ— 
+@Return:æ— 
 *************************************************/  
 void rtc0_init(void)
 {
-	lfclk_init(1);//1£ºXOSC 0£ºROSC
-	NRF_RTC0->PRESCALER = 0;//32.768khz Ô¼µÈÓÚ0.03ms
+	lfclk_init(1);//1ï¼šXOSC 0ï¼šROSC
+	NRF_RTC0->PRESCALER = 0;//32.768khz çº¦ç­‰äº0.03ms
 	NRF_RTC0->CC[0] = rtc_base;//
 	NRF_RTC0->EVENTS_COMPARE[0] = 0;//EVENTS_TICK
 	NRF_RTC0->INTENSET =  RTC_INTENCLR_COMPARE0_Msk;//
@@ -68,10 +68,10 @@ void rtc0_init(void)
 	NVIC_EnableIRQ( RTC0_IRQn );
 }
 /************************************************* 
-@Description:rtcÆô¶¯¼ÆÊı
+@Description:rtcå¯åŠ¨è®¡æ•°
 @Input:
-@Output:ÎŞ
-@Return:ÎŞ
+@Output:æ— 
+@Return:æ— 
 *************************************************/  
 void rtc0_start(void)
 {
@@ -79,20 +79,20 @@ void rtc0_start(void)
 }
 
 /************************************************* 
-@Description:rtcÍ£Ö¹¼ÆÊı
+@Description:rtcåœæ­¢è®¡æ•°
 @Input:
-@Output:ÎŞ
-@Return:ÎŞ
+@Output:æ— 
+@Return:æ— 
 *************************************************/  
 void rtc0_stop(void)
 {
 	NRF_RTC0->TASKS_STOP = 1;
 }
 /*
-@Description:¹ã²¥¼ä¸ôÔö¼Ó0~7.65msµÄËæ»úÑÓÊ±
-@Input:ÎŞ
-@Output:ÎŞ
-@Return:ÎŞ
+@Description:å¹¿æ’­é—´éš”å¢åŠ 0~7.65msçš„éšæœºå»¶æ—¶
+@Input:æ— 
+@Output:æ— 
+@Return:æ— 
 */
 void rtc_update_interval(void)
 {
@@ -100,14 +100,14 @@ void rtc_update_interval(void)
 	NRF_RTC0->CC[0] = rtc_base + advDelay;
 }
 /*
-@Description:Æô¶¯Íâ²¿¾§Õñ
-@Input:ÎŞ
-@Output:ÎŞ
-@Return:ÎŞ
+@Description:å¯åŠ¨å¤–éƒ¨æ™¶æŒ¯
+@Input:æ— 
+@Output:æ— 
+@Return:æ— 
 */
 void xosc_hfclk_start(void)
 {
-	/*µ±Íâ²¿¾§ÕñÎ´Æô¶¯Ê±£¬²ÅÆô¶¯Íâ²¿¾§Õñ*/
+	/*å½“å¤–éƒ¨æ™¶æŒ¯æœªå¯åŠ¨æ—¶ï¼Œæ‰å¯åŠ¨å¤–éƒ¨æ™¶æŒ¯*/
 	if((NRF_CLOCK->HFCLKSTAT & CLOCK_HFCLKSTAT_SRC_Xtal)!=1)
 	{
 		/*clear event*/
@@ -120,7 +120,7 @@ void xosc_hfclk_start(void)
 		{
 			
 		}
-		//µÈ´ıHFCLK running
+		//ç­‰å¾…HFCLK running
 		while((NRF_CLOCK->HFCLKSTAT & CLOCK_HFCLKSTAT_STATE_Msk) == 0)
 		{
 		}
@@ -128,10 +128,10 @@ void xosc_hfclk_start(void)
 }
 
 /*
-@Description:¹Ø±ÕÍâ²¿¾§Õñ
-@Input:ÎŞ
-@Output:ÎŞ
-@Return:ÎŞ
+@Description:å…³é—­å¤–éƒ¨æ™¶æŒ¯
+@Input:æ— 
+@Output:æ— 
+@Return:æ— 
 */
 void xosc_hfclk_stop(void)
 {
@@ -142,10 +142,10 @@ void xosc_hfclk_stop(void)
 	}		
 }
 /*
-@Description:¶¨Ê±Æ÷³õÊ¼»¯
-@Input:ºÁÃë¾«È·¶¨Ê±
-@Output:ÎŞ
-@Return:ÎŞ
+@Description:å®šæ—¶å™¨åˆå§‹åŒ–
+@Input:æ¯«ç§’ç²¾ç¡®å®šæ—¶
+@Output:æ— 
+@Return:æ— 
 */
 void timer0_init(uint8_t delayms)
 {
@@ -161,20 +161,20 @@ void timer0_init(uint8_t delayms)
 	NVIC_EnableIRQ(TIMER0_IRQn);
 }
 /*
-@Description:¶¨Ê±Æ÷Æô¶¯¼ÆÊı
+@Description:å®šæ—¶å™¨å¯åŠ¨è®¡æ•°
 @Input:
-@Output:ÎŞ
-@Return:ÎŞ
+@Output:æ— 
+@Return:æ— 
 */
 void timer0_start(void)
 {
 	NRF_TIMER0->TASKS_START = 1;
 }
 /*
-@Description:¶¨Ê±Æ÷Í£Ö¹¼ÆÊı
+@Description:å®šæ—¶å™¨åœæ­¢è®¡æ•°
 @Input:
-@Output:ÎŞ
-@Return:ÎŞ
+@Output:æ— 
+@Return:æ— 
 */	
 void timer0_stop(void)
 {
@@ -184,10 +184,10 @@ void timer0_stop(void)
 
 
 /*
-@Description:´®¿Ú³õÊ¼»¯
-@Input:ÎŞ
-@Output:ÎŞ
-@Return:ÎŞ
+@Description:ä¸²å£åˆå§‹åŒ–
+@Input:æ— 
+@Output:æ— 
+@Return:æ— 
 */
 void UART_Init(void)
 {
@@ -199,10 +199,10 @@ void UART_Init(void)
 }
 
 /************************************************* 
-Description:app³õÊ¼»¯
-Input:ÎŞ
+Description:appåˆå§‹åŒ–
+Input:æ— 
 Output:
-Return:ÎŞ
+Return:æ— 
 *************************************************/ 
 void app_init(void)
 {
@@ -212,11 +212,11 @@ void app_init(void)
 	debug_log_init();
 	#endif
 //	debug_printf("app_reader start");
-	Radio_Init();//ÉäÆµ³õÊ¼»¯
-	TID_RECORD_Clear();//Çå¿Õ»º´æ
-	timer0_init(TIM0_TIME);//50ms¶¨Ê±
-	radio_select(DATA_CHANNEL,RADIO_RX);//½øÈë½ÓÊÕ×´Ì¬
-	timer0_start();//¿ªÊ¼¼ÆÊı
+	Radio_Init();//å°„é¢‘åˆå§‹åŒ–
+	TID_RECORD_Clear();//æ¸…ç©ºç¼“å­˜
+	timer0_init(TIM0_TIME);//50mså®šæ—¶
+	radio_select(DATA_CHANNEL,RADIO_RX);//è¿›å…¥æ¥æ”¶çŠ¶æ€
+	timer0_start();//å¼€å§‹è®¡æ•°
 }
 
 

@@ -5,16 +5,16 @@
 
 
 
-//´®¿Ú¶¨Òå
+//ä¸²å£å®šä¹‰
 #define RX_PIN_NUMBER  11    // UART RX pin number.
 #define TX_PIN_NUMBER 9   // UART TX pin number.
 #define CTS_PIN_NUMBER 6   // UART Clear To Send pin number. Not used if HWFC is set to false
 #define RTS_PIN_NUMBER 7    // Not used if HWFC is set to false 
 #define HWFC           false // UART hardware flow control
 	
-#define TIM0_TIME 50  //50MS¼ÆÊıÒ»´Î
+#define TIM0_TIME 50  //50MSè®¡æ•°ä¸€æ¬¡
 
-//ÖĞ¶ÏÓÅÏÈ¼¶¶¨Òå
+//ä¸­æ–­ä¼˜å…ˆçº§å®šä¹‰
 typedef enum
 {
     APP_IRQ_PRIORITY_HIGHEST = 0,
@@ -31,10 +31,10 @@ typedef enum
 #define TIM0_PRIORITY      	APP_IRQ_PRIORITY_LOW
 
 //ext function
-extern void rtc_init(void);//1s¶¨Ê±£¬ÓÃÀ´Ê±¼ä¶¨Ê±ºÍÉäÆµÖÜÆÚ·¢ËÍ
-extern void rtc_update_interval(void);//Ôö¼ÓËæ»úÊ±¼ä
-extern void xosc_hfclk_start(void);//ÉäÆµ·¢ËÍ£¬ĞèÒªÆô¶¯Íâ²¿16M¾§Õñ
-extern void xosc_hfclk_stop(void);//Í£Ö¹ÉäÆµ·¢ËÍÊ±£¬¹Ø±ÕÍâ²¿¾§Õñ
+extern void rtc_init(void);//1så®šæ—¶ï¼Œç”¨æ¥æ—¶é—´å®šæ—¶å’Œå°„é¢‘å‘¨æœŸå‘é€
+extern void rtc_update_interval(void);//å¢åŠ éšæœºæ—¶é—´
+extern void xosc_hfclk_start(void);//å°„é¢‘å‘é€ï¼Œéœ€è¦å¯åŠ¨å¤–éƒ¨16Mæ™¶æŒ¯
+extern void xosc_hfclk_stop(void);//åœæ­¢å°„é¢‘å‘é€æ—¶ï¼Œå…³é—­å¤–éƒ¨æ™¶æŒ¯
 extern void app_init(void);
 void UART_Init(void);
 

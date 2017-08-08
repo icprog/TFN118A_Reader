@@ -49,7 +49,7 @@ uint8_t radio_status = RADIO_STATUS_IDLE;
  * hal_nrf_write_tx_payload(packet, PACKET_STATIC_LENGTH);
  * 
 */
-/*ÉäÆµ²ÎÊýÅäÖÃ*/
+/*å°„é¢‘å‚æ•°é…ç½®*/
 void radio_configure()
 {
     // Radio config
@@ -58,35 +58,35 @@ void radio_configure()
 	//LOGIC2:0xC300C2C2C2         LOGIC3:0xC400C2C2C2
 	//LOGIC4:0xC800C2C2C2         LOGIC5:0xC700C2C2C2
 	//LOGIC6:0xC600C2C2C2         LOGIC7:0xC500C2C2C2
-    //Í¨¹ýÒÔÏÂÅäÖÃ£¬ÎÒÃÇµÃµ½µÄÂß¼­µØÖ·¼´8¸öÍ¨µÀµÄµØÖ··Ö±ðÎªÒÔÉÏ8¸öµØÖ·£¬
-    NRF_RADIO->PREFIX0 = 0xC4C3C200|RADIO_ADDRESS_H;// Âß¼­µØÖ· // Prefix byte of addresses 3 to 0
+    //é€šè¿‡ä»¥ä¸‹é…ç½®ï¼Œæˆ‘ä»¬å¾—åˆ°çš„é€»è¾‘åœ°å€å³8ä¸ªé€šé“çš„åœ°å€åˆ†åˆ«ä¸ºä»¥ä¸Š8ä¸ªåœ°å€ï¼Œ
+    NRF_RADIO->PREFIX0 = 0xC4C3C200|RADIO_ADDRESS_H;// é€»è¾‘åœ°å€ // Prefix byte of addresses 3 to 0
 	NRF_RADIO->PREFIX1 = 0xC5C6C7C8UL;//Prefix byte of addresses 7 to 4
-	NRF_RADIO->BASE0   = RADIO_ADDRESS_L;//Âß¼­µØÖ·// Base address for prefix 0
-    NRF_RADIO->BASE1   = 0x43434343UL;//Âß¼­µØÖ·Éè¶¨ // Base address for prefix 1-7
-	//±¾ÉäÆµÐ­ÒéÊ¹ÓÃÍ¨µÀ0´«ÊäÊý¾Ý£¬¼´µØÖ·Îª0xE7E7E7E7E7
+	NRF_RADIO->BASE0   = RADIO_ADDRESS_L;//é€»è¾‘åœ°å€// Base address for prefix 0
+    NRF_RADIO->BASE1   = 0x43434343UL;//é€»è¾‘åœ°å€è®¾å®š // Base address for prefix 1-7
+	//æœ¬å°„é¢‘åè®®ä½¿ç”¨é€šé“0ä¼ è¾“æ•°æ®ï¼Œå³åœ°å€ä¸º0xE7E7E7E7E7
     NRF_RADIO->TXADDRESS   = 0x00UL;//Set device address 0 to use when transmitting
     NRF_RADIO->RXADDRESSES = 0x01UL;//Enable device address 0 to use to select which addresses to receive
 
     // Packet configuration
-	//ÉèÖÃS1³¤¶È
-	//ÉèÖÃS0³¤¶È
-	//ÉèÖÃLENGTHµÄ³¤¶È
-	//ÉèÖÃÕâÈý¸öÓòµÄ³¤¶È¶¼Îª0
+	//è®¾ç½®S1é•¿åº¦
+	//è®¾ç½®S0é•¿åº¦
+	//è®¾ç½®LENGTHçš„é•¿åº¦
+	//è®¾ç½®è¿™ä¸‰ä¸ªåŸŸçš„é•¿åº¦éƒ½ä¸º0
     NRF_RADIO->PCNF0 = (PACKET_S1_FIELD_SIZE     << RADIO_PCNF0_S1LEN_Pos) |
                        (PACKET_S0_FIELD_SIZE     << RADIO_PCNF0_S0LEN_Pos) |
                        (PACKET_LENGTH_FIELD_SIZE << RADIO_PCNF0_LFLEN_Pos); //lint !e845 "The right argument to operator '|' is certain to be 0"
 
     // Packet configuration
-	//²»Ê¹ÄÜÊý¾Ý¼ÓÔë
-	//Êý¾Ý¸ßÎ»ÔÚÏÈ
-	//¾²Ì¬µØÖ·Îª4£¬ÒâÎ¶×Å±ÈLENGTH filedËù¶¨ÒåµÄ°ü³¤¶È¶àËÄ
-	//PAYLOAD×î´ó³¤¶ÈÎª32
+	//ä¸ä½¿èƒ½æ•°æ®åŠ å™ª
+	//æ•°æ®é«˜ä½åœ¨å…ˆ
+	//é™æ€åœ°å€ä¸º4ï¼Œæ„å‘³ç€æ¯”LENGTH filedæ‰€å®šä¹‰çš„åŒ…é•¿åº¦å¤šå››
+	//PAYLOADæœ€å¤§é•¿åº¦ä¸º32
     NRF_RADIO->PCNF1 = (RADIO_PCNF1_WHITEEN_Enabled << RADIO_PCNF1_WHITEEN_Pos) |    
                        (RADIO_PCNF1_ENDIAN_Big       << RADIO_PCNF1_ENDIAN_Pos)  |
                        (PACKET_BASE_ADDRESS_LENGTH   << RADIO_PCNF1_BALEN_Pos)   |
                        (PACKET_STATIC_LENGTH         << RADIO_PCNF1_STATLEN_Pos) |
                        (PACKET_PAYLOAD_MAXSIZE       << RADIO_PCNF1_MAXLEN_Pos); //lint !e845 "The right argument to operator '|' is certain to be 0"
-//Èç¹ûÊ¹ÄÜÏà¶ÔÓ¦µÄshortcut¾Í²»ÐèÒª½«TASK->STARTÉèÖÃÎª1ÁË½ÓÊÕµ½radio->ready×Ô¶¯»á·¢startÊÂ¼þ
+//å¦‚æžœä½¿èƒ½ç›¸å¯¹åº”çš„shortcutå°±ä¸éœ€è¦å°†TASK->STARTè®¾ç½®ä¸º1äº†æŽ¥æ”¶åˆ°radio->readyè‡ªåŠ¨ä¼šå‘startäº‹ä»¶
 #if SHORTCUT_EN == 1
 		NRF_RADIO->SHORTS = (RADIO_SHORTS_END_DISABLE_Enabled << RADIO_SHORTS_END_DISABLE_Pos) |
 										(RADIO_SHORTS_READY_START_Enabled << RADIO_SHORTS_READY_START_Pos) |
@@ -94,7 +94,7 @@ void radio_configure()
 										(RADIO_SHORTS_DISABLED_RXEN_Enabled << RADIO_SHORTS_DISABLED_RXEN_Pos); //|
 //										(RADIO_SHORTS_DISABLED_TXEN_Enabled << RADIO_SHORTS_DISABLED_TXEN_Pos);
 #endif
-		//Êý¾Ý°×»¯
+		//æ•°æ®ç™½åŒ–
 	// NRF_RADIO->DATAWHITEIV = 0X0A;
     // CRC Config
     NRF_RADIO->CRCCNF = (RADIO_CRCCNF_LEN_Two << RADIO_CRCCNF_LEN_Pos); // Number of checksum bits
@@ -110,7 +110,7 @@ void radio_configure()
     }
 }
 
-/*ÉäÆµ³õÊ¼»¯*/
+/*å°„é¢‘åˆå§‹åŒ–*/
 void Radio_Init(void)
 {
     // Set radio configuration parameters.
@@ -154,7 +154,7 @@ void radio_disable(void)
 //void radio_tx_carrier(uint8_t txpower, uint8_t mode, uint8_t channel)
 //{
 //    radio_disable();
-//    NRF_RADIO->SHORTS     = RADIO_SHORTS_READY_START_Msk;  //¿ªÆô¿ì½Ý·½Ê½£¬×Ô¶¯Æô¶¯STARTÈÎÎñ
+//    NRF_RADIO->SHORTS     = RADIO_SHORTS_READY_START_Msk;  //å¼€å¯å¿«æ·æ–¹å¼ï¼Œè‡ªåŠ¨å¯åŠ¨STARTä»»åŠ¡
 //    NRF_RADIO->TXPOWER    = (txpower << RADIO_TXPOWER_TXPOWER_Pos);    
 //    NRF_RADIO->MODE       = (mode << RADIO_MODE_MODE_Pos);
 //    NRF_RADIO->FREQUENCY  = channel;
@@ -173,7 +173,7 @@ void radio_modulated_tx_carrier(uint8_t txpower, uint8_t mode, uint8_t channel)
     radio_disable();
 //    generate_modulated_rf_packet();
     NRF_RADIO->SHORTS     = RADIO_SHORTS_END_DISABLE_Msk | RADIO_SHORTS_READY_START_Msk | \
-                            RADIO_SHORTS_DISABLED_TXEN_Msk;  //Ñ­»··¢ËÍ
+                            RADIO_SHORTS_DISABLED_TXEN_Msk;  //å¾ªçŽ¯å‘é€
     NRF_RADIO->TXPOWER    = (txpower << RADIO_TXPOWER_TXPOWER_Pos);
     NRF_RADIO->MODE       = (mode << RADIO_MODE_MODE_Pos);
     NRF_RADIO->FREQUENCY  = channel;
@@ -184,7 +184,7 @@ void radio_modulated_tx_carrier(uint8_t txpower, uint8_t mode, uint8_t channel)
 void radio_tx_carrier( uint8_t mode, uint8_t channel)
 {
     radio_disable();
-    NRF_RADIO->SHORTS     = RADIO_SHORTS_READY_START_Msk;  //¿ªÆô¿ì½Ý·½Ê½£¬×Ô¶¯Æô¶¯STARTÈÎÎñ
+    NRF_RADIO->SHORTS     = RADIO_SHORTS_READY_START_Msk;  //å¼€å¯å¿«æ·æ–¹å¼ï¼Œè‡ªåŠ¨å¯åŠ¨STARTä»»åŠ¡
    
     NRF_RADIO->MODE       = (mode << RADIO_MODE_MODE_Pos);
     NRF_RADIO->FREQUENCY  = channel;
@@ -199,7 +199,7 @@ void radio_tx_carrier( uint8_t mode, uint8_t channel)
 void radio_rx_carrier(uint8_t mode, uint8_t channel)
 {
     radio_disable();
-    NRF_RADIO->SHORTS     = RADIO_SHORTS_READY_START_Msk;//¿ªÆô¿ì½Ý·½Ê½£¬×Ô¶¯Æô¶¯STARTÈÎÎñ
+    NRF_RADIO->SHORTS     = RADIO_SHORTS_READY_START_Msk;//å¼€å¯å¿«æ·æ–¹å¼ï¼Œè‡ªåŠ¨å¯åŠ¨STARTä»»åŠ¡
 #if RSSI_EN==1
 	NRF_RADIO->SHORTS |= RADIO_SHORTS_ADDRESS_RSSISTART_Msk;
 #endif

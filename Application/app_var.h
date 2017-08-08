@@ -2,17 +2,17 @@
 #define _app_var_
 #include "sys.h"
 #include "app_radio.h"
-//±êÇ©ID´æ´¢µØÖ·
-#define 	ID_BEGIN	0x3D000					//1KB,Ó²¼şĞÅÏ¢Çø,Ç°4×Ö½Ú·ÅIDºÅ
-//¶ÁĞ´Æ÷ÄÚ²¿²ÎÊı
+//æ ‡ç­¾IDå­˜å‚¨åœ°å€
+#define 	ID_BEGIN	0x3D000					//1KB,ç¡¬ä»¶ä¿¡æ¯åŒº,å‰4å­—èŠ‚æ”¾IDå·
+//è¯»å†™å™¨å†…éƒ¨å‚æ•°
 typedef struct
 {
-	uint8_t tx_pwr;//·¢Éä¹¦ÂÊ
-	//ÉäÆµÖÜÆÚ·¢ËÍ
-	uint8_t radio_send_en;//ÖÜÆÚ·¢ËÍ
-	uint16_t radio_cycle_time;//ÖÜÆÚ¼ä¸ô  1£º±íÊ¾50ms 
-	uint16_t radio_time_cnt;//¼ÆÊıÆ÷
-	uint8_t radio_time_cnt_en;//¼ÆÊıÊ¹ÄÜ
+	uint8_t tx_pwr;//å‘å°„åŠŸç‡
+	//å°„é¢‘å‘¨æœŸå‘é€
+	uint8_t radio_send_en;//å‘¨æœŸå‘é€
+	uint16_t radio_cycle_time;//å‘¨æœŸé—´éš”  1ï¼šè¡¨ç¤º50ms 
+	uint16_t radio_time_cnt;//è®¡æ•°å™¨
+	uint8_t radio_time_cnt_en;//è®¡æ•°ä½¿èƒ½
 }Para_Typedef;
 
 #define para_area 1
@@ -20,9 +20,9 @@ typedef struct
 #define user_area1 3
 #define user_area2 4
 
-//flash²¿·Ö,´úÂë´æ´¢Çø£¬´óĞ¡¸ù¾İmcuĞÍºÅ¾ö¶¨.
-/*FICR¼Ä´æÆ÷ÖĞµÄCODEPAGESIZE¶ÔÓ¦×ÅÒ³¸öÊı£¬CODESIZE¶ÔÓ¦Ò³°üº¬µÄmemory´óĞ¡
-CODEPAGESIZE*CODESIZE¼´ÎªROMµÄ´óĞ¡,pg_size=1024,pg_num = 256,256KBµÄ´úÂë´æ´¢Çø£¬FLASH¡£
+//flashéƒ¨åˆ†,ä»£ç å­˜å‚¨åŒºï¼Œå¤§å°æ ¹æ®mcuå‹å·å†³å®š.
+/*FICRå¯„å­˜å™¨ä¸­çš„CODEPAGESIZEå¯¹åº”ç€é¡µä¸ªæ•°ï¼ŒCODESIZEå¯¹åº”é¡µåŒ…å«çš„memoryå¤§å°
+CODEPAGESIZE*CODESIZEå³ä¸ºROMçš„å¤§å°,pg_size=1024,pg_num = 256,256KBçš„ä»£ç å­˜å‚¨åŒºï¼ŒFLASHã€‚
 */
 typedef struct
 {
@@ -33,23 +33,23 @@ typedef struct
 	uint32_t USER2_BASE;
 	uint16_t page_size;
 	uint16_t page_num;
-}ROM_BaseAddr_Typedef;   //ROM»ùµØÖ·¶¨Òå
+}ROM_BaseAddr_Typedef;   //ROMåŸºåœ°å€å®šä¹‰
 
 
-//ÄÚ²¿²ÎÊıÇø³¤¶È
+//å†…éƒ¨å‚æ•°åŒºé•¿åº¦
 #define PARA_RECORD_LEN									16
-//ÄÚ²¿FLASHÇøÀàĞÍ
+//å†…éƒ¨FLASHåŒºç±»å‹
 #define RAM_TYPE_PARA									0
 #define RAM_TYPE_RESEVER								1
 #define RAM_TYPE_USER1									2
 #define RAM_TYPE_USER2									3
 
-//ÉäÆµÆµµÀºÍ·½ÏòÑ¡Ôñ
+//å°„é¢‘é¢‘é“å’Œæ–¹å‘é€‰æ‹©
 #define DATA_CHANNEL									0
 #define CONFIG_CHANNEL									1
 #define RADIO_RX										0
 #define RADIO_TX										1
-//Ä¬ÈÏÉäÆµÆµµÀ
+//é»˜è®¤å°„é¢‘é¢‘é“
 #define RADIO_ADDRESS_H 0XE8
 #define RADIO_ADDRESS_L 0X98DB6D5A
 #define RADIO_CHANNEL_DATA						25
@@ -57,15 +57,15 @@ typedef struct
 
 //PACKET-S0
 #define RADIO_S0_IDX 0
-#define RADIO_S0_DIR_UP 0 //ÉÏĞĞ 
-#define RADIO_S0_DIR_DOWN 1 //ÏÂĞĞ
+#define RADIO_S0_DIR_UP 0 //ä¸Šè¡Œ 
+#define RADIO_S0_DIR_DOWN 1 //ä¸‹è¡Œ
 #define RADIO_S0_DIR_POS 0
 #define RADIO_S0_DIR_Msk 0X01
 //PACKET-LENGTH
 #define RADIO_LENGTH_IDX 1
 #define RADIO_HEAD_LENGTH 2
 /**************************************************************************
-							±êÇ©ÉÏ±¨²ÎÊı¶¨Òå
+							æ ‡ç­¾ä¸ŠæŠ¥å‚æ•°å®šä¹‰
 ******************************************************************************/
 //PACKET-PAYLOAD-XOR
 #define PYLOAD_XOR_LENGTH 1
@@ -73,34 +73,35 @@ typedef struct
 //PACKET-PAYLOAD
 #define PAYLOAD_BASE_IDX RADIO_HEAD_LENGTH
 
-//³¤¶È
+//é•¿åº¦
 #define RADIO_TID_LENGTH 4
 #define RADIO_RID_LENGTH 4
 #define RADIO_ID_LENGTH	4
 #define RADIO_CMD_LENGTH 1
 
-//Ë÷ÒıºÅ
-//#define TAG_SER_IDX                     0//Ë³ĞòºÅ
-#define TAG_ID_IDX										PAYLOAD_BASE_IDX//±êÇ©ID 2~5
-#define TAG_STATE_IDX 									(PAYLOAD_BASE_IDX+RADIO_TID_LENGTH)//×´Ì¬×Ö
-//#define TAG_WINDOWS_IDX								6//½ÓÊÕ´°¿ÚÖ¸Ê¾
-//#define TAG_JOINTYPE_IDX								6//¾²Ì¬½ÓÈëÖ¸Ê¾
-//#define TAG_ERROR_IDX									6//Êı¾İÒì³£Ö¸Ê¾
-//#define TAG_KEY_IDX									6//°´¼üÖ¸Ê¾
-//#define TAG_SHOCK_IDX									6//Õñ¶¯Ö¸Ê¾
-#define TAG_VERSION_IDX									(PAYLOAD_BASE_IDX+5)//°æ±¾Ë÷ÒıºÅ
-#define TAG_STYPE_IDX									(PAYLOAD_BASE_IDX+6)//ĞÅÏ¢±êÇ©ÀàĞÍ
-#define TAG_SDATA_IDX									(PAYLOAD_BASE_IDX+7)//´«¸ĞÊı¾İ
+//ç´¢å¼•å·
+//#define TAG_SER_IDX                     0//é¡ºåºå·
+#define TAG_ID_IDX										PAYLOAD_BASE_IDX//æ ‡ç­¾ID 2~5
+#define TAG_STATE_IDX 									(PAYLOAD_BASE_IDX+RADIO_TID_LENGTH)//çŠ¶æ€å­—
+//#define TAG_WINDOWS_IDX								6//æ¥æ”¶çª—å£æŒ‡ç¤º
+//#define TAG_JOINTYPE_IDX								6//é™æ€æ¥å…¥æŒ‡ç¤º
+//#define TAG_ERROR_IDX									6//æ•°æ®å¼‚å¸¸æŒ‡ç¤º
+//#define TAG_KEY_IDX									6//æŒ‰é”®æŒ‡ç¤º
+//#define TAG_SHOCK_IDX									6//æŒ¯åŠ¨æŒ‡ç¤º
+#define TAG_VERSION_IDX									(PAYLOAD_BASE_IDX+5)//ç‰ˆæœ¬ç´¢å¼•å·
+#define TAG_STYPE_IDX									(PAYLOAD_BASE_IDX+6)//ä¿¡æ¯æ ‡ç­¾ç±»å‹
+#define TAG_SDATA_IDX									(PAYLOAD_BASE_IDX+7)//ä¼ æ„Ÿæ•°æ®
 
-//Öµ
-//È¡Öµ
-//Ë³ĞòºÅ,0~15¾²Ì¬£¬16¶¯Ì¬
+//å€¼
+//å–å€¼
+//é¡ºåºå·,0~15é™æ€ï¼Œ16åŠ¨æ€
 //#define TAG_SER_Pos											0
 //#define TAG_SER_Msk											0xFF
 
 
-//µÍÑ¹Ö¸Ê¾£¬1-µÍÑ¹
+//ä½å‹æŒ‡ç¤ºï¼Œ1-ä½å‹
 #define TAG_LOWPWR_Pos									0
+#define TAG_LOWPWR_Msk									0x01
 #define TAG_KEY_Pos										1
 #define TAG_WITHSENSOR_Pos								2
 #define TAG_WITHWIN_Pos									3
@@ -108,31 +109,31 @@ typedef struct
 #define TAG_MODE_Pos									4
 #define TAG_TIMEUPDATE_Pos								5
 #define TAG_TIMEUPDATE_Msk								0x20
-//°æ±¾ĞÅÏ¢ 
+//ç‰ˆæœ¬ä¿¡æ¯ 
 #define TAG_HDVERSION_POS								4
 #define TAG_SFVERSION_POS								0
 #define TAG_HDVER_NUM									1
 #define TAG_SFVER_NUM									1
-//´«¸ĞÀàĞÍ
+//ä¼ æ„Ÿç±»å‹
 #define TAG_SENSORTYPE_Pos								0
 #define TAG_SENSORTYPE_SchoolWatch 			(1 << TAG_SENSORTYPE_Pos)
-//´«¸ĞÊı¾İ
+//ä¼ æ„Ÿæ•°æ®
 #define TAG_MSEQ_Pos 									4
 /********************************************
-					±êÇ©ÄÚ²¿²ÎÊı
+					æ ‡ç­¾å†…éƒ¨å‚æ•°
 ********************************************/
-#define TAGP_BRIEFNUM_IDX								0//¶ÌºÅ£¬0¡«16
-#define P_PWR_IDX									1//·¢Éä¹¦ÂÊ£¬0¡«7
-#define TAGP_RPINFOSRC_IDX								2//×Ô¶¯ÉÏ±¨ËùĞèĞ¯´øµÄĞÅÏ¢À´Ô´£¬0¡«2
-#define TAGP_WORKMODE_IDX								3//¹¤×÷Ä£Ê½£¬0-±£´æÄ£Ê½£¬1-»î¶¯Ä£Ê½
-//#define TAGP_DELIVERID_IDX							9//¹¤³§ID£¬4B£¬0xFFFFFFFF-´ıĞ´Èë
-//#define TAGP_SENSORTYPE_IDX							13//´«¸ĞÀàĞÍ£¬0-ÎŞ£¬1-ÎÂ¶È£¬2-ĞÄÂÊ£¬0¡«2
-//#define TAGP_SSRUNIT_IDX								14//´«¸Ğ²ÉÑùÖÜÆÚµ¥Î»£¬0-Ãë£¬1-·Ö£¬2-Ê±
+#define TAGP_BRIEFNUM_IDX								0//çŸ­å·ï¼Œ0ï½16
+#define P_PWR_IDX									1//å‘å°„åŠŸç‡ï¼Œ0ï½7
+#define TAGP_RPINFOSRC_IDX								2//è‡ªåŠ¨ä¸ŠæŠ¥æ‰€éœ€æºå¸¦çš„ä¿¡æ¯æ¥æºï¼Œ0ï½2
+#define TAGP_WORKMODE_IDX								3//å·¥ä½œæ¨¡å¼ï¼Œ0-ä¿å­˜æ¨¡å¼ï¼Œ1-æ´»åŠ¨æ¨¡å¼
+//#define TAGP_DELIVERID_IDX							9//å·¥å‚IDï¼Œ4Bï¼Œ0xFFFFFFFF-å¾…å†™å…¥
+//#define TAGP_SENSORTYPE_IDX							13//ä¼ æ„Ÿç±»å‹ï¼Œ0-æ— ï¼Œ1-æ¸©åº¦ï¼Œ2-å¿ƒç‡ï¼Œ0ï½2
+//#define TAGP_SSRUNIT_IDX								14//ä¼ æ„Ÿé‡‡æ ·å‘¨æœŸå•ä½ï¼Œ0-ç§’ï¼Œ1-åˆ†ï¼Œ2-æ—¶
 //#define TAGP_SSRVALUE_IDX								14
-/*ÄÚ²¿²ÎÊıÈ¡Öµ*/
-//¶ÌºÅ
+/*å†…éƒ¨å‚æ•°å–å€¼*/
+//çŸ­å·
 #define TAGP_BRIEFNUM_MAX_VALUE							16
-//·¢Éä¹¦ÂÊ£¬0¡«7£»0--30dbm£¬1--20dbm£¬2--16dbm,3--12dbm,4--8dbm,5--4dbm,6--0dbm,7-+4dbm
+//å‘å°„åŠŸç‡ï¼Œ0ï½7ï¼›0--30dbmï¼Œ1--20dbmï¼Œ2--16dbm,3--12dbm,4--8dbm,5--4dbm,6--0dbm,7-+4dbm
 #define P_PWR_Pos									4
 #define P_PWR_Msk									0xF0
 #define P_PWR_N30DBM									0
@@ -143,25 +144,39 @@ typedef struct
 #define P_PWR_N4DBM									5
 #define P_PWR_P0DBM									6
 #define P_PWR_P4DBM									7
-#define P_PWR_MAX_VALUE								7  //²ÎÊı×î´óÖµ
+#define P_PWR_MAX_VALUE								7  //å‚æ•°æœ€å¤§å€¼
 
-//¹¤×÷Ä£Ê½,0-±£´æÄ£Ê½£¬1-»î¶¯Ä£Ê½
+//å·¥ä½œæ¨¡å¼,0-ä¿å­˜æ¨¡å¼ï¼Œ1-æ´»åŠ¨æ¨¡å¼
 #define TAGP_WORKMODE_Pos								0
 #define TAGP_WORKMODE_Msk								0x0f
 #define TAGP_WORKMODE_MAX_VALUE							0x01
  
-//¶ÁĞ´Æ÷
+//è¯»å†™å™¨
 #define READER_ID_IDX									(PAYLOAD_BASE_IDX + RADIO_TID_LENGTH) 
 
-//±êÇ©¼ÇÂ¼
-#define Sensor_Data_Length 1
-#define CAPACITY 200	//±êÇ©ÈİÁ¿ 
+#define READER_UP_ID_IDX										PAYLOAD_BASE_IDX//æ ‡ç­¾ID 2~5
+#define READER_UP_STATE_IDX 									(PAYLOAD_BASE_IDX+RADIO_TID_LENGTH)//çŠ¶æ€å­—
+#define READER_UP_VERSION_IDX									(PAYLOAD_BASE_IDX+5)//ç‰ˆæœ¬ç´¢å¼•å·
+#define READER_UP_STYPE_IDX									(PAYLOAD_BASE_IDX+6)//ä¿¡æ¯æ ‡ç­¾ç±»å‹
+#define READER_UP_SDATA_IDX									(PAYLOAD_BASE_IDX+7)//ä¼ æ„Ÿæ•°æ®
+//ä¼ æ„Ÿç±»å‹
+#define READER_UP_SENSORTYPE_Pos								0
+#define READER_UP_SENSORTYPE_SchoolWatch 			(1 << READER_UP_SENSORTYPE_Pos)
+
+
+//æ ‡ç­¾è®°å½•
+#define Sensor_Data_Length 3
+#define CAPACITY 200	//æ ‡ç­¾å®¹é‡ 
 typedef struct
 {
-	uint8_t TID[4];
-	uint8_t State;
-	uint8_t Sensor_Type;
-	uint8_t Sensor_Data[Sensor_Data_Length];//´«¸ĞÊı¾İ£¬Ö¸Ê¾ÏûÏ¢ÀàĞÍ
+	uint8_t TID[4];//æ ‡ç­¾ID
+	uint8_t State;//æ ‡ç­¾çŠ¶æ€
+	uint8_t RSSI;//ä¿¡å·å¼ºåº¦
+	uint8_t LeaveTime;//ç¦»å¼€æ—¶é—´
+	uint8_t VER;//ç‰ˆæœ¬ä¿¡æ¯	
+	uint8_t Sensor_Type;//ä¼ æ„Ÿç±»å‹
+	uint8_t Sensor_Data[Sensor_Data_Length];//ä¼ æ„Ÿæ•°æ®ï¼ŒæŒ‡ç¤ºæ¶ˆæ¯ç±»å‹
+	
 }TID_Typedef;
 
 //#define TAG_LOWVOLTAGE_Pos							0
@@ -169,10 +184,10 @@ typedef struct
 //#define TAG_LOWVOLTAGE_WARN							0x01
 //#define TAG_LOWVOLTAGE_NORMAL						0x00
 /********************************************
-					¶ÁĞ´Æ÷ÄÚ²¿²ÎÊı
+					è¯»å†™å™¨å†…éƒ¨å‚æ•°
 ********************************************/
-#define READERP_SENDEN_IDX              1//ÖÜÆÚ·¢ËÍ
-#define READERP_SENDTIME_IDX 			1//·¢ËÍ¼ä¸ô
+#define READERP_SENDEN_IDX              1//å‘¨æœŸå‘é€
+#define READERP_SENDTIME_IDX 			1//å‘é€é—´éš”
 
 
 #define READERP_SENDEN_Pos				3
@@ -183,78 +198,78 @@ typedef struct
 #define READERP_SENDTIME_Msk			0x07
 #define READERP_SENDTIME_MAX_VALUE		0x07
 
-#define ID_TAP_REGION_First							0x00000001//±êÇ©ID
+#define ID_TAP_REGION_First							0x00000001//æ ‡ç­¾ID
 #define ID_TAP_REGION_Last							0xFEFFFFFF
-#define ID_BROADCAST_TAG             				0xFFFFFFFE//¹ã²¥id  MSBµÍµØÖ· Êµ¼ÊID 0xFEFFFFFF
-#define ID_RECEIVER_REGION_First					0xFF000000//½ÓÊÕÆ÷/¶ÁĞ´Æ÷ID
+#define ID_BROADCAST_TAG             				0xFFFFFFFE//å¹¿æ’­id  MSBä½åœ°å€ å®é™…ID 0xFEFFFFFF
+#define ID_RECEIVER_REGION_First					0xFF000000//æ¥æ”¶å™¨/è¯»å†™å™¨ID
 #define ID_RECEIVER_REGION_Last						0xFFFDFFFF
-#define ID_TRANSCEIVER_REGION_First					0xFFFE0000//×ö·¢¿¨Æ÷ÓÃ(×ÀÃæ)
+#define ID_TRANSCEIVER_REGION_First					0xFFFE0000//åšå‘å¡å™¨ç”¨(æ¡Œé¢)
 #define ID_TRANSCEIVER_REGION_Last					0xFFFEFFFF
-#define ID_RESERVER_REGION_First					0xFFFF0000//±£Áô
+#define ID_RESERVER_REGION_First					0xFFFF0000//ä¿ç•™
 #define ID_RESERVER_REGION_Last						0xFFFFFFFA
-#define ID_SELF_RP									0xFFFFFFFB//±¾»úID£¬ÓÃÓÚ·ÃÎÊ×ÔÉí²ÎÊı£¬Ê¹ÄÜ»Ø¸´(Ö»ÔÚUART¶Ë³öÏÖ)
-#define ID_BC_TAP_RP								0xFFFFFFFC//¹ã²¥ID£¬Ä¿±êËùÓĞ±êÇ©£¬Ê¹ÄÜ»Ø¸´
-#define ID_BC_TAP_NRP								0xFFFFFFFD//¹ã²¥ID£¬Ä¿±êËùÓĞ±êÇ©£¬½ûÖ¹»Ø¸´
-#define ID_BROADCAST_READER_RP						0xFFFFFFFE//¹ã²¥ID£¬Ä¿±êËùÓĞ½ÓÊÕÆ÷£¬Ê¹ÄÜ»Ø¸´
-#define ID_RESERVER1								0xFFFFFFFF//±£Áô
-#define ID_RESERVER0								0x00000000//±£Áô
+#define ID_SELF_RP									0xFFFFFFFB//æœ¬æœºIDï¼Œç”¨äºè®¿é—®è‡ªèº«å‚æ•°ï¼Œä½¿èƒ½å›å¤(åªåœ¨UARTç«¯å‡ºç°)
+#define ID_BC_TAP_RP								0xFFFFFFFC//å¹¿æ’­IDï¼Œç›®æ ‡æ‰€æœ‰æ ‡ç­¾ï¼Œä½¿èƒ½å›å¤
+#define ID_BC_TAP_NRP								0xFFFFFFFD//å¹¿æ’­IDï¼Œç›®æ ‡æ‰€æœ‰æ ‡ç­¾ï¼Œç¦æ­¢å›å¤
+#define ID_BROADCAST_READER_RP						0xFFFFFFFE//å¹¿æ’­IDï¼Œç›®æ ‡æ‰€æœ‰æ¥æ”¶å™¨ï¼Œä½¿èƒ½å›å¤
+#define ID_RESERVER1								0xFFFFFFFF//ä¿ç•™
+#define ID_RESERVER0								0x00000000//ä¿ç•™
 
 #define READER_ID_MBYTE							0XFF
 
 
 /***************************************************************************
-						ÃüÁî
-¶¨Òå	S0 		max_length		TID  	RID		CMD
-Êı×éÎ»ÖÃ0		1				2		6		10
+						å‘½ä»¤
+å®šä¹‰	S0 		max_length		TID  	RID		CMD
+æ•°ç»„ä½ç½®0		1				2		6		10
 **************************************************************************/
 /********************************************************************
-						ÄÚ²¿ÎÄ¼ş£¨flash£©²Ù×÷
-¶ÁĞ´Æ÷ÏÂ·¢ÎÄ¼şÃüÁî
-¶¨Òå		±£Áô 	Ä£Ê½		Æ«ÒÆ  	³¤¶È	
-Êı×éÎ»ÖÃ	11		13			14		16				
+						å†…éƒ¨æ–‡ä»¶ï¼ˆflashï¼‰æ“ä½œ
+è¯»å†™å™¨ä¸‹å‘æ–‡ä»¶å‘½ä»¤
+å®šä¹‰		ä¿ç•™ 	æ¨¡å¼		åç§»  	é•¿åº¦	
+æ•°ç»„ä½ç½®	11		13			14		16				
 
-±êÇ©ÃüÁî¶Á»Ø¸´
-¶¨Òå		Ö´ĞĞ×´Ì¬2×Ö½Ú	Êı¾İ
-Êı×éÎ»ÖÃ	11				13
+æ ‡ç­¾å‘½ä»¤è¯»å›å¤
+å®šä¹‰		æ‰§è¡ŒçŠ¶æ€2å­—èŠ‚	æ•°æ®
+æ•°ç»„ä½ç½®	11				13
 
-±êÇ©ÃüÁîĞ´»Ø¸´
-¶¨Òå		Ö´ĞĞ×´Ì¬2×Ö½Ú
-Êı×éÎ»ÖÃ	11
+æ ‡ç­¾å‘½ä»¤å†™å›å¤
+å®šä¹‰		æ‰§è¡ŒçŠ¶æ€2å­—èŠ‚
+æ•°ç»„ä½ç½®	11
 ******************************************************************/
-//Ö´ĞĞ×´Ì¬
+//æ‰§è¡ŒçŠ¶æ€
 #define EXCUTE_STATE_LENGTH	2
-//µã¶ÔµãÃüÁî¹Ì¶¨³¤¶È
+//ç‚¹å¯¹ç‚¹å‘½ä»¤å›ºå®šé•¿åº¦
 #define CMD_FIX_LENGTH 		(RADIO_TID_LENGTH+RADIO_RID_LENGTH+RADIO_CMD_LENGTH+PYLOAD_XOR_LENGTH)
-//ÃüÁî»Ø¸´¹Ì¶¨³¤¶È
+//å‘½ä»¤å›å¤å›ºå®šé•¿åº¦
 #define CMD_ACK_FIX_LENGTH 		(CMD_FIX_LENGTH+EXCUTE_STATE_LENGTH)//
-//ÃüÁîË÷ÒıºÅ
+//å‘½ä»¤ç´¢å¼•å·
 #define CMD_IDX				(RADIO_HEAD_LENGTH + RADIO_TID_LENGTH + RADIO_RID_LENGTH)
-//ÎÄ¼ş²Ù×÷Ë÷ÒıºÅ
+//æ–‡ä»¶æ“ä½œç´¢å¼•å·
 #define FILE_MODE_IDX (CMD_IDX+3)
 #define FILE_OFFSET_IDX (CMD_IDX+4)
 #define FILE_LENGTH_IDX (CMD_IDX+6)
 #define FILE_WDATA_IDX (CMD_IDX+7)			
 
-//ÃüÁî
-#define FILE_CMD_READ  								0X38  	//¶ÁÎÄ¼ş
-#define FILE_CMD_WRITE								0X39  	//Ğ´ÎÄ¼ş
-//Ä£Ê½
-#define FILE_MODE_PARA								0X01	//ÄÚ²¿²ÎÊıÇø
-#define FILE_MODE_RESERVER							0X02	//±£ÁôÇø
-#define FILE_MODE_USER1								0X03	//ÓÃ»§Çø1
-#define FILE_MODE_USER2								0X04	//ÓÃ»§Çø2
-//¶ÁÈ¡×îĞÂ¼ÇÂ¼
-#define FILE_OFFSET_RNEW							0XFFFF 	//¶ÁÈ¡×îĞÂ¼ÇÂ¼
-//Êı¾İ
+//å‘½ä»¤
+#define FILE_CMD_READ  								0X38  	//è¯»æ–‡ä»¶
+#define FILE_CMD_WRITE								0X39  	//å†™æ–‡ä»¶
+//æ¨¡å¼
+#define FILE_MODE_PARA								0X01	//å†…éƒ¨å‚æ•°åŒº
+#define FILE_MODE_RESERVER							0X02	//ä¿ç•™åŒº
+#define FILE_MODE_USER1								0X03	//ç”¨æˆ·åŒº1
+#define FILE_MODE_USER2								0X04	//ç”¨æˆ·åŒº2
+//è¯»å–æœ€æ–°è®°å½•
+#define FILE_OFFSET_RNEW							0XFFFF 	//è¯»å–æœ€æ–°è®°å½•
+//æ•°æ®
 #define FILE_RDATA_IDX		13
-//Ğ´Æ«ÒÆ
-// 0xffffĞ´×îĞÂ¼ÇÂ¼£¬µ±¼ÇÂ¼ÂúÊ±£¬²Á³ıËùÓĞ¼ÇÂ¼
-// 0xfffeĞ´×îĞÂ¼ÇÂ¼£¬µ±¼ÇÂ¼ÂúÊ±£¬²»²Á³ı¼ÇÂ¼
+//å†™åç§»
+// 0xffffå†™æœ€æ–°è®°å½•ï¼Œå½“è®°å½•æ»¡æ—¶ï¼Œæ“¦é™¤æ‰€æœ‰è®°å½•
+// 0xfffeå†™æœ€æ–°è®°å½•ï¼Œå½“è®°å½•æ»¡æ—¶ï¼Œä¸æ“¦é™¤è®°å½•
 #define FILE_OFFSET_WNEW	0XFFFF
 /******************************************************************
-						Ö´ĞĞ×´Ì¬
-					³ö´í´úÂë¸ñÊ½2×Ö½Ú
-				³ö´íÀà±ğ´úÂë ³ö´í×Ó´úÂë
+						æ‰§è¡ŒçŠ¶æ€
+					å‡ºé”™ä»£ç æ ¼å¼2å­—èŠ‚
+				å‡ºé”™ç±»åˆ«ä»£ç  å‡ºé”™å­ä»£ç 
 ******************************************************************/
 #define EXCUTE_STATE_IDX 	11
 
@@ -265,41 +280,41 @@ typedef enum
 
 typedef enum 
 {
-	FILE_MODE_ERR=0X00,//²Ù×÷Çø²»´æÔÚ
-	FILE_BODER_ERR=0X01,//³¬³ö±ß½ç£¬³¤¶È/¶ÁÆ«ÒÆÁ¿³¬³ö
-	FILE_WOFFSET_ERR=0X02,//Ğ´Æ«ÒÆ´íÎó
-	FILE_WDATA_ERR=0X03    //Êı¾İ´íÎó
+	FILE_MODE_ERR=0X00,//æ“ä½œåŒºä¸å­˜åœ¨
+	FILE_BODER_ERR=0X01,//è¶…å‡ºè¾¹ç•Œï¼Œé•¿åº¦/è¯»åç§»é‡è¶…å‡º
+	FILE_WOFFSET_ERR=0X02,//å†™åç§»é”™è¯¯
+	FILE_WDATA_ERR=0X03    //æ•°æ®é”™è¯¯
 }ERROR_L_Typedef;
-#define CMD_RUN_SUCCESS 0X0000//ÃüÁîÖ´ĞĞ³É¹¦
+#define CMD_RUN_SUCCESS 0X0000//å‘½ä»¤æ‰§è¡ŒæˆåŠŸ
 
 typedef struct
 {
-	uint8_t mode;//ÎÄ¼ş²Ù×÷Ä£Ê½
-	uint8_t length;//¶ÁÈ¡³¤¶È
-	uint16_t offset;//Æ«ÒÆÎ»ÖÃ
+	uint8_t mode;//æ–‡ä»¶æ“ä½œæ¨¡å¼
+	uint8_t length;//è¯»å–é•¿åº¦
+	uint16_t offset;//åç§»ä½ç½®
 }File_Typedef;
 
-//ÏûÏ¢²Ù×÷
-#define MESSAGE_CMD									0XB0	//ÏûÏ¢ÃüÁî
+//æ¶ˆæ¯æ“ä½œ
+#define MESSAGE_CMD									0XB0	//æ¶ˆæ¯å‘½ä»¤
 typedef struct
 {
-	uint8_t msg_pkt_seq;	//°üĞòºÅ
-//	uint8_t has_data_flag;  //ÓĞÊı¾İ
-	uint8_t msg_head;		//ÏûÏ¢Í·
-	uint8_t msg_pkt_len;	//ÏÂ·¢µÄÒ»¸ö°üÖĞµÄĞÅÏ¢³¤¶È
-	uint8_t msg_idx;		//ÏûÏ¢Ë÷Òı
-	uint8_t MSG_PUSH_HEAD;  //ÏÂ·¢µÄ°üÍ·
-	uint8_t PKT_PUSH_LEN[4];//°ü0~3³¤¶È
-	uint8_t PKT_PUSH_BUF[4][32];//°ü0~3Êı¾İ
-	uint8_t PKT_PUSH_NUM;//·Ö°ü¸öÊı
-	uint8_t PKT_PUSH_SEQ;//·Ö°üĞòºÅ
-	uint8_t MSG_PUSH_SEQ;//ÏÂ·¢µÄÏûÏ¢ĞòºÅ	
-	uint8_t PKT_MORE;//¸ü¶à°ü
-	uint8_t MSG_RE_PUSH;//ÖØ·¢´ÎÊı
-	uint8_t MSG_PUSH_RID[4];//½ÓÊÕÆ÷ID
-	uint8_t MSG_PUSH_TID[4];//±êÇ©ID
+	uint8_t msg_pkt_seq;	//åŒ…åºå·
+//	uint8_t has_data_flag;  //æœ‰æ•°æ®
+	uint8_t msg_head;		//æ¶ˆæ¯å¤´
+	uint8_t msg_pkt_len;	//ä¸‹å‘çš„ä¸€ä¸ªåŒ…ä¸­çš„ä¿¡æ¯é•¿åº¦
+	uint8_t msg_idx;		//æ¶ˆæ¯ç´¢å¼•
+	uint8_t MSG_PUSH_HEAD;  //ä¸‹å‘çš„åŒ…å¤´
+	uint8_t PKT_PUSH_LEN[4];//åŒ…0~3é•¿åº¦
+	uint8_t PKT_PUSH_BUF[4][32];//åŒ…0~3æ•°æ®
+	uint8_t PKT_PUSH_NUM;//åˆ†åŒ…ä¸ªæ•°
+	uint8_t PKT_PUSH_SEQ;//åˆ†åŒ…åºå·
+	uint8_t MSG_PUSH_SEQ;//ä¸‹å‘çš„æ¶ˆæ¯åºå·	
+	uint8_t PKT_MORE;//æ›´å¤šåŒ…
+	uint8_t MSG_RE_PUSH;//é‡å‘æ¬¡æ•°
+	uint8_t MSG_PUSH_RID[4];//æ¥æ”¶å™¨ID
+	uint8_t MSG_PUSH_TID[4];//æ ‡ç­¾ID
 }Message_Typedef;
-//ÏûÏ¢²Ù×÷Ë÷ÒıºÅ
+//æ¶ˆæ¯æ“ä½œç´¢å¼•å·
 #define MSG_HEAD_IDX (CMD_IDX+1)
 #define MSG_DATA_IDX  (CMD_IDX+2)
 
@@ -323,15 +338,15 @@ typedef struct
 typedef enum 
 {
 	MSG_SUCCESS=0X00,
-	MSG_PKT_SEQ_ERROR=0X02,//°üĞòºÅ³ö´í
-	MSG_REPEAT_ERROR=0X01,//ÏûÏ¢ÖØ¸´
-	MSG_CMDPARA_ERROR = 0X03, //ÃüÁî²ÎÊı´íÎó
+	MSG_PKT_SEQ_ERROR=0X02,//åŒ…åºå·å‡ºé”™
+	MSG_REPEAT_ERROR=0X01,//æ¶ˆæ¯é‡å¤
+	MSG_CMDPARA_ERROR = 0X03, //å‘½ä»¤å‚æ•°é”™è¯¯
 	MSG_ERROR =0X04
 }ERROR_MSG_Typedef;
-//Ê±¼äÉèÖÃ
+//æ—¶é—´è®¾ç½®
 #define TIME_PARA_LEN							4
-#define TIME_SET_CMD							0XB1	//Ê±¼äÉèÖÃÃüÁî
-//º¯Êı
+#define TIME_SET_CMD							0XB1	//æ—¶é—´è®¾ç½®å‘½ä»¤
+//å‡½æ•°
 void SystemParaInit(void);
 void UpdateRunPara(void);
 uint8_t Read_Para(File_Typedef f1_para,uint8_t *p_packet);

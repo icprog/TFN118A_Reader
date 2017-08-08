@@ -1,17 +1,18 @@
 #include "tim.h"
 #include "app_var.h"
 #include "rtc.h"
-extern rtc_typedef Global_Time;//È«¾ÖÊ±¼ä 
+#include "app_uart.h"
+extern rtc_typedef Global_Time;//å…¨å±€æ—¶é—´ 
 extern Para_Typedef Reader_Para;
-#define rtc_cont 20 //1s¶¨Ê±
-uint8_t rtc_cnt =rtc_cont;//rtcÃë¼ÆÊıÆ÷
-
+uint8_t rtc_cnt =rtc_cont;//rtcç§’è®¡æ•°å™¨
+extern Time_Typedef Time_type;//è¶…æ—¶å¤„ç†
+uint8_t sec_flag;//ç§’è®¡æ•°
 void TIMER0_IRQHandler()
 {
 	if(NRF_TIMER0->EVENTS_COMPARE[0])
 	{
 		NRF_TIMER0->EVENTS_COMPARE[0] = 0;
-		//ÖÜÆÚ·¢ËÍ
+		//å‘¨æœŸå‘é€
 		if(Reader_Para.radio_time_cnt_en)
 		{
 			Reader_Para.radio_time_cnt++;
@@ -21,12 +22,18 @@ void TIMER0_IRQHandler()
 				Reader_Para.radio_send_en = 1;
 			}
 		}
-		//Ê±ÖÓ
+		//æ—¶é’Ÿ
 		rtc_cnt++;
 		if(rtc_cont == rtc_cnt)
 		{
-			Calendar21Century(&Global_Time);//¸üĞÂÊ±¼ä
+			Calendar21Century(&Global_Time);//æ›´æ–°æ—¶é—´
 			rtc_cnt = 0;
+			sec_flag = 1;
+		}
+		//è¶…æ—¶
+		if(Time_type.Radio_Time_En)
+		{
+			Time_type.Radio_Time_Cnt++;//
 		}
 			
 	}

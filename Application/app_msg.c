@@ -1,14 +1,14 @@
 /*******************************************************************************
-** °æÈ¨:		
-** ÎÄ¼şÃû: 		app_msg.c
-** °æ±¾£º  		1.0
-** ¹¤×÷»·¾³: 	MDK-ARM 5.23
-** ×÷Õß: 		cc
-** Éú³ÉÈÕÆÚ: 	2017-07-22
-** ¹¦ÄÜ:		  
-** Ïà¹ØÎÄ¼ş:	app_msg.h
-** ĞŞ¸ÄÈÕÖ¾£º	
-** °æÈ¨ËùÓĞ   
+** ç‰ˆæƒ:		
+** æ–‡ä»¶å: 		app_msg.c
+** ç‰ˆæœ¬ï¼š  		1.0
+** å·¥ä½œç¯å¢ƒ: 	MDK-ARM 5.23
+** ä½œè€…: 		cc
+** ç”Ÿæˆæ—¥æœŸ: 	2017-07-22
+** åŠŸèƒ½:		  
+** ç›¸å…³æ–‡ä»¶:	app_msg.h
+** ä¿®æ”¹æ—¥å¿—ï¼š	
+** ç‰ˆæƒæ‰€æœ‰   
 *******************************************************************************/
 
 #include "app_msg.h"
@@ -17,12 +17,12 @@
 #include "nrf_nvmc.h"
 #include "string.h"
 #include "Debug_log.h"
-extern Payload_Typedef cmd_packet;//ÃüÁîÉäÆµ´¦Àí
+extern Payload_Typedef cmd_packet;//å‘½ä»¤å°„é¢‘å¤„ç†
 extern uint8_t DeviceID[4];
 MSG_Store_Typedef MSG_Store;
-extern ROM_BaseAddr_Typedef   ROM_BaseAddr;//ROM»ùµØÖ·¶¨Òå
-//ÏûÏ¢ÊıÁ¿
-//ÏûÏ¢´¦Àí
+extern ROM_BaseAddr_Typedef   ROM_BaseAddr;//ROMåŸºåœ°å€å®šä¹‰
+//æ¶ˆæ¯æ•°é‡
+//æ¶ˆæ¯å¤„ç†
 Message_Typedef Msg_Packet;
 typedef enum
 {
@@ -33,10 +33,10 @@ typedef enum
 }pkt_seq;
 
 /************************************************* 
-@Description:¹«¹²º¯Êı-ÏûÏ¢³õÊ¼»¯
-@Input:ÎŞ
-@Output:ÎŞ
-@Return:ÎŞ
+@Description:å…¬å…±å‡½æ•°-æ¶ˆæ¯åˆå§‹åŒ–
+@Input:æ— 
+@Output:æ— 
+@Return:æ— 
 *************************************************/ 
 void MSG_Addr_Init(void)
 {
@@ -51,24 +51,24 @@ void MSG_Addr_Init(void)
 
 
 /************************************************* 
-@Description:¹«¹²º¯Êı-²Á³ıËùÓĞÏûÏ¢
-@Input:ÎŞ
-@Output:ÎŞ
-@Return:ÎŞ
+@Description:å…¬å…±å‡½æ•°-æ“¦é™¤æ‰€æœ‰æ¶ˆæ¯
+@Input:æ— 
+@Output:æ— 
+@Return:æ— 
 *************************************************/ 
 void MSG_Erase_ALL(void)
 {
 	uint32_t msg_addr;
-	//ÏûÏ¢1
+	//æ¶ˆæ¯1
 	msg_addr = MSG_Store.MSG1_ROM;
 	nrf_nvmc_page_erase(msg_addr);
-	//ÏûÏ¢2
+	//æ¶ˆæ¯2
 	msg_addr = MSG_Store.MSG2_ROM;
 	nrf_nvmc_page_erase(msg_addr);
-	//ÏûÏ¢3
+	//æ¶ˆæ¯3
 	msg_addr = MSG_Store.MSG3_ROM;
 	nrf_nvmc_page_erase(msg_addr);
-	//²Á³ı×îĞÂÏûÏ¢¼ÇÂ¼
+	//æ“¦é™¤æœ€æ–°æ¶ˆæ¯è®°å½•
 	msg_addr  = MSG_Store.NEW_MSG_ROM;
 	nrf_nvmc_page_erase(msg_addr);
 	
@@ -77,28 +77,28 @@ void MSG_Erase_ALL(void)
 	
 }		
 /************************************************* 
-@Description:¹«¹²º¯Êı-¼ì²éÏûÏ¢ĞòÁĞºÅ
-@Input:ÎŞ
-@Output:ÎŞ
-@Return:ÎŞ
+@Description:å…¬å…±å‡½æ•°-æ£€æŸ¥æ¶ˆæ¯åºåˆ—å·
+@Input:æ— 
+@Output:æ— 
+@Return:æ— 
 *************************************************/ 
 uint8_t MSG_ROM_Check(uint32_t temp_addr)
 {
-	if(*(uint8_t*)temp_addr <= MSG_SEQ_Max_Value)  //¼ì²éĞòÁĞºÅ
+	if(*(uint8_t*)temp_addr <= MSG_SEQ_Max_Value)  //æ£€æŸ¥åºåˆ—å·
 		return TRUE;
 	return FALSE;
 }
 /************************************************* 
-@Description:¹«¹²º¯Êı-²éÕÒ×îĞÂÏûÏ¢,ÏûÏ¢ÊıÁ¿¡¢×îĞÂÏûÏ¢´æ´¢ÇøË÷ÒıºÅ¡¢»ñÈ¡ÏûÏ¢ĞòÁĞºÅ
-Èç¹ûflashÖĞÏûÏ¢ÊıÁ¿ºÍÏûÏ¢Ë÷ÒıºÅ²»·ûºÏÒªÇó£¬È«²¿²Á³ı¡£
-@Input:ÎŞ
-@Output:ÎŞ
-@Return:ÎŞ
+@Description:å…¬å…±å‡½æ•°-æŸ¥æ‰¾æœ€æ–°æ¶ˆæ¯,æ¶ˆæ¯æ•°é‡ã€æœ€æ–°æ¶ˆæ¯å­˜å‚¨åŒºç´¢å¼•å·ã€è·å–æ¶ˆæ¯åºåˆ—å·
+å¦‚æœflashä¸­æ¶ˆæ¯æ•°é‡å’Œæ¶ˆæ¯ç´¢å¼•å·ä¸ç¬¦åˆè¦æ±‚ï¼Œå…¨éƒ¨æ“¦é™¤ã€‚
+@Input:æ— 
+@Output:æ— 
+@Return:æ— 
 *************************************************/ 
 void MSG_Find_New(void)
 {
 	uint8_t msg_idx;
-	//»ñÈ¡´æ´¢ÇøÏûÏ¢ÊıÁ¿
+	//è·å–å­˜å‚¨åŒºæ¶ˆæ¯æ•°é‡
 	MSG_Store.MSG_Num += MSG_ROM_Check(MSG_Store.MSG1_ROM);
 	MSG_Store.MSG_Num += MSG_ROM_Check(MSG_Store.MSG2_ROM);
 	MSG_Store.MSG_Num += MSG_ROM_Check(MSG_Store.MSG3_ROM);
@@ -107,7 +107,7 @@ void MSG_Find_New(void)
 		MSG_Erase_ALL();
 		return;
 	}
-	//»ñÈ¡×îĞÂÏûÏ¢Ë÷ÒıºÅ
+	//è·å–æœ€æ–°æ¶ˆæ¯ç´¢å¼•å·
 	msg_idx = *(uint8_t*)MSG_Store.NEW_MSG_ROM;
 	if(msg_idx <= MSG_IDX_MAX_Value)
 	{
@@ -118,7 +118,7 @@ void MSG_Find_New(void)
 		MSG_Erase_ALL();
 		return;
 	}
-	//»ñÈ¡ĞòÁĞºÅ
+	//è·å–åºåˆ—å·
 	MSG_Store.MSG_Seq = *(uint8_t*)(*MSG_Store.MSG_ADDR[MSG_Store.MSG_IDX]);
 	if(MSG_Store.MSG_Seq > MSG_SEQ_Max_Value)
 	{
@@ -127,43 +127,43 @@ void MSG_Find_New(void)
 	}
 }
 /************************************************* 
-@Description:¹«¹²º¯Êı-ÏûÏ¢°üĞ´ÈëFLASH,Ìæ»»×î¾ÉµÄÏûÏ¢
-@Input:idx ×îĞÂÏûÏ¢Ë÷ÒıºÅ£¬Ò»°üÏûÏ¢
-@Output:ÎŞ
-@Return:ÎŞ
+@Description:å…¬å…±å‡½æ•°-æ¶ˆæ¯åŒ…å†™å…¥FLASH,æ›¿æ¢æœ€æ—§çš„æ¶ˆæ¯
+@Input:idx æœ€æ–°æ¶ˆæ¯ç´¢å¼•å·ï¼Œä¸€åŒ…æ¶ˆæ¯
+@Output:æ— 
+@Return:æ— 
 *************************************************/ 
 void MSG_Write(uint8_t idx,u8* buff)
 {
 	uint32_t msg_addr;
 	uint8_t m_idx;
-	m_idx = (idx + MSG_FLASH_NUM - MSG_IDX_MAX_Value)%MSG_FLASH_NUM;//Ë÷ÒıºÅ¼õÈ¥2
+	m_idx = (idx + MSG_FLASH_NUM - MSG_IDX_MAX_Value)%MSG_FLASH_NUM;//ç´¢å¼•å·å‡å»2
 	msg_addr = *MSG_Store.MSG_ADDR[m_idx];
 	nrf_nvmc_page_erase(msg_addr);
 	nrf_nvmc_write_bytes(msg_addr,buff,(buff[MSG_LEN_IDX]+MSG_FLASH_HEAD_LEN));
-	MSG_Store.MSG_IDX = (MSG_Store.MSG_IDX + 1)%MSG_FLASH_NUM;//Ë÷ÒıºÅ+1
+	MSG_Store.MSG_IDX = (MSG_Store.MSG_IDX + 1)%MSG_FLASH_NUM;//ç´¢å¼•å·+1
 	msg_addr = MSG_Store.NEW_MSG_ROM;
 	nrf_nvmc_page_erase(msg_addr);
-	nrf_nvmc_write_byte(msg_addr,MSG_Store.MSG_IDX);//Ğ´Èë×îĞÂË÷ÒıºÅ
+	nrf_nvmc_write_byte(msg_addr,MSG_Store.MSG_IDX);//å†™å…¥æœ€æ–°ç´¢å¼•å·
 }
 
 /************************************************* 
-@Description:±êÇ©-ÏûÏ¢°üÖÃÎ»
-@Input:ÎŞ
-@Output:ÎŞ
-@Return:ÎŞ
+@Description:æ ‡ç­¾-æ¶ˆæ¯åŒ…ç½®ä½
+@Input:æ— 
+@Output:æ— 
+@Return:æ— 
 *************************************************/ 
 void MSG_Packet_ReSet(void)
 {
 	
-	MSG_Store.MSG_BUFF_IDX = MSG_STORE_IDX;//Ò»ÌõÏûÏ¢´æ´¢Ë÷ÒıºÅÖÃÎ»
-	Msg_Packet.msg_pkt_seq = 0;//°üĞòºÅÖÃÎ»
+	MSG_Store.MSG_BUFF_IDX = MSG_STORE_IDX;//ä¸€æ¡æ¶ˆæ¯å­˜å‚¨ç´¢å¼•å·ç½®ä½
+	Msg_Packet.msg_pkt_seq = 0;//åŒ…åºå·ç½®ä½
 }
 
 /************************************************* 
-@Description:±êÇ©-ÏûÏ¢Í·¼ì²â
-@Input:ÎŞ
-@Output:ÎŞ
-@Return:ÎŞ
+@Description:æ ‡ç­¾-æ¶ˆæ¯å¤´æ£€æµ‹
+@Input:æ— 
+@Output:æ— 
+@Return:æ— 
 *************************************************/ 
 u16 MessageHeadCheck(uint8_t msg_head)
 {
@@ -175,12 +175,12 @@ u16 MessageHeadCheck(uint8_t msg_head)
 	{
 		return MSG_REPEAT_ERROR;
 	}
-	//°üĞòºÅ¼ì²é
+	//åŒ…åºå·æ£€æŸ¥
 	if(Msg_Packet.msg_pkt_seq == pkt_sq)
 	{
-		if(pkt_end)//Ò»°üÊı¾İÎ´´«Íê
+		if(pkt_end)//ä¸€åŒ…æ•°æ®æœªä¼ å®Œ
 		{
-//			debug_printf("\r\n½ÓÊÕ°ü%d",pkt_sq);
+//			debug_printf("\r\næ¥æ”¶åŒ…%d",pkt_sq);
 			Msg_Packet.msg_pkt_seq++;
 			if(Msg_Packet.msg_pkt_seq>pkt_seq3)
 				Msg_Packet.msg_pkt_seq = pkt_seq0;
@@ -194,7 +194,7 @@ u16 MessageHeadCheck(uint8_t msg_head)
 	else 
 	{
 		Msg_Packet.msg_pkt_seq = 0;
-		Msg_Packet.msg_head = MSG_HEAD_Msk|message_seq|pkt_end|Msg_Packet.msg_pkt_seq;//»Ø¸´ÕıÈ·µÄ°üĞòºÅ
+		Msg_Packet.msg_head = MSG_HEAD_Msk|message_seq|pkt_end|Msg_Packet.msg_pkt_seq;//å›å¤æ­£ç¡®çš„åŒ…åºå·
 		cmd_state = (Msg_Packet.msg_head<<8)|MSG_PKT_SEQ_ERROR;
 		return cmd_state;
 	}
@@ -202,10 +202,10 @@ u16 MessageHeadCheck(uint8_t msg_head)
 }
 
 /************************************************* 
-@Description:±êÇ©-ÏûÏ¢´¦Àí
-@Input:p_mpacketÉäÆµÊı¾İ
-@Output:ÎŞ
-@Return:ÎŞ
+@Description:æ ‡ç­¾-æ¶ˆæ¯å¤„ç†
+@Input:p_mpacketå°„é¢‘æ•°æ®
+@Output:æ— 
+@Return:æ— 
 *************************************************/ 
 u16 Message_Deal(uint8_t *p_mpacket)
 {
@@ -214,21 +214,21 @@ u16 Message_Deal(uint8_t *p_mpacket)
 	if(MSG_SUCCESS == (cmd_state&MSG_ERROR_Msk))
 	{
 		u8 pkt_end = ((p_mpacket[MSG_HEAD_IDX] &MSG_PKT_END_Msk)>>MSG_PKT_END_Pos);
-		//´æ´¢ÏûÏ¢
-		if(MSG_Store.MSG_BUFF_IDX >= MSG_PKT_MAX_LEN)//ÏûÏ¢³¤¶È³¬³ö×î´ó»º³åÇø
+		//å­˜å‚¨æ¶ˆæ¯
+		if(MSG_Store.MSG_BUFF_IDX >= MSG_PKT_MAX_LEN)//æ¶ˆæ¯é•¿åº¦è¶…å‡ºæœ€å¤§ç¼“å†²åŒº
 			return MSG_ERROR;
-		Msg_Packet.msg_pkt_len = p_mpacket[RADIO_LENGTH_IDX] - MSG_PAYLOAD_FIX_LEN -MSG_HEAD_LEN;//ÏûÏ¢ÄÚÈİ³¤¶È
+		Msg_Packet.msg_pkt_len = p_mpacket[RADIO_LENGTH_IDX] - MSG_PAYLOAD_FIX_LEN -MSG_HEAD_LEN;//æ¶ˆæ¯å†…å®¹é•¿åº¦
 		my_memcpy(&MSG_Store.MSG_BUFF[MSG_Store.MSG_BUFF_IDX],&p_mpacket[MSG_DATA_IDX],Msg_Packet.msg_pkt_len);
 		MSG_Store.MSG_BUFF_IDX +=Msg_Packet.msg_pkt_len; 
-		if(0 == pkt_end)//°ü½áÊø£¬Ğ´ÈëflashÖĞ
+		if(0 == pkt_end)//åŒ…ç»“æŸï¼Œå†™å…¥flashä¸­
 		{
-			MSG_Store.MSG_Seq = ((p_mpacket[MSG_HEAD_IDX] &MSG_SEQ_Msk)>>MSG_SEQ_Pos);//¸üĞÂ°üĞòºÅ
-			MSG_Store.MSG_BUFF[MSG_SEQ_IDX] = MSG_Store.MSG_Seq;//´æ´¢°üĞòºÅ
+			MSG_Store.MSG_Seq = ((p_mpacket[MSG_HEAD_IDX] &MSG_SEQ_Msk)>>MSG_SEQ_Pos);//æ›´æ–°åŒ…åºå·
+			MSG_Store.MSG_BUFF[MSG_SEQ_IDX] = MSG_Store.MSG_Seq;//å­˜å‚¨åŒ…åºå·
 			MSG_Store.MSG_BUFF[MSG_LEN_IDX] = MSG_Store.MSG_BUFF_IDX - MSG_FLASH_HEAD_LEN;//MSG_BUFF_IDX-2
 			MSG_Write(MSG_Store.MSG_IDX,MSG_Store.MSG_BUFF);
 			cmd_state = MSG_START_END_VALUE;
-//			debug_printf("\r\n°ü½ÓÊÕÍê³É");
-			MSG_Packet_ReSet();//°ü½ÓÊÕÍê³ÉÖÃÎ»
+//			debug_printf("\r\nåŒ…æ¥æ”¶å®Œæˆ");
+			MSG_Packet_ReSet();//åŒ…æ¥æ”¶å®Œæˆç½®ä½
 			return cmd_state;
 		}
 		cmd_state = (p_mpacket[MSG_HEAD_IDX]<<8)|0x00;
@@ -236,25 +236,25 @@ u16 Message_Deal(uint8_t *p_mpacket)
 	return cmd_state;
 }
 /************************************************* 
-@Description:¶ÁĞ´Æ÷-»ñÈ¡ÒªÏÂ·¢µÄÏûÏ¢
+@Description:è¯»å†™å™¨-è·å–è¦ä¸‹å‘çš„æ¶ˆæ¯
 @Input:
 @Output:
-@Return:1:»ñÈ¡³É¹¦£¬0£º»ñÈ¡Ê§°Ü
+@Return:1:è·å–æˆåŠŸï¼Œ0ï¼šè·å–å¤±è´¥
 *************************************************/ 
 uint8_t Message_Get(uint8_t msg_head)
 {
-	uint8_t Diff;//²îÖµ
+	uint8_t Diff;//å·®å€¼
 	uint8_t i,j;
 	uint32_t addr;
 	uint8_t msg_len;
-	uint8_t reminder;//ÓàÊı
-	uint8_t tag_msg_seq;//±êÇ©ÏûÏ¢ĞòºÅ
+	uint8_t reminder;//ä½™æ•°
+	uint8_t tag_msg_seq;//æ ‡ç­¾æ¶ˆæ¯åºå·
 	tag_msg_seq = (msg_head&MSG_SEQ_Msk)>>MSG_SEQ_Pos;
 	if(tag_msg_seq!=MSG_Store.MSG_Seq)
 	{
 		Diff = ((MSG_Store.MSG_Seq + MSG_SEQ_MAX_NUM - tag_msg_seq)%MSG_SEQ_MAX_NUM);
-		Msg_Packet.MSG_PUSH_SEQ = (Diff>MSG_FLASH_NUM)?((MSG_Store.MSG_Seq + MSG_SEQ_MAX_NUM - MSG_FLASH_NUM +1)%8)://ÏûÏ¢ĞòºÅÏë¼õ´óÓÚ3£¬Ôò¶ÁĞ´Æ÷ĞòºÅ¼õÈ¥2
-		(tag_msg_seq + MSG_SEQ_MAX_NUM + 1)%8;//ÏûÏ¢ĞòºÅĞ¡ÓÚ3£¬ÔòĞòºÅÎª±êÇ©ÏûÏ¢ĞòºÅ+1
+		Msg_Packet.MSG_PUSH_SEQ = (Diff>MSG_FLASH_NUM)?((MSG_Store.MSG_Seq + MSG_SEQ_MAX_NUM - MSG_FLASH_NUM +1)%8)://æ¶ˆæ¯åºå·æƒ³å‡å¤§äº3ï¼Œåˆ™è¯»å†™å™¨åºå·å‡å»2
+		(tag_msg_seq + MSG_SEQ_MAX_NUM + 1)%8;//æ¶ˆæ¯åºå·å°äº3ï¼Œåˆ™åºå·ä¸ºæ ‡ç­¾æ¶ˆæ¯åºå·+1
 		for(i=0;i<MSG_SEQ_MAX_NUM;i++)
 		{
 			if(Msg_Packet.MSG_PUSH_SEQ == *(uint8_t*)(*MSG_Store.MSG_ADDR[i]))
@@ -262,29 +262,29 @@ uint8_t Message_Get(uint8_t msg_head)
 				
 				addr = *MSG_Store.MSG_ADDR[i];
 				msg_len = *(uint8_t *)(addr+MSG_LEN_IDX);
-				nrf_nvmc_read_bytes(addr,MSG_Store.MSG_PUSH,(msg_len+MSG_FLASH_HEAD_LEN));//¶ÁÈ¡Êı¾İ
-				//»ñÈ¡·Ö°ü¸öÊı£¬¼°Ã¿¸ö·Ö°üµÄ³¤¶È
+				nrf_nvmc_read_bytes(addr,MSG_Store.MSG_PUSH,(msg_len+MSG_FLASH_HEAD_LEN));//è¯»å–æ•°æ®
+				//è·å–åˆ†åŒ…ä¸ªæ•°ï¼ŒåŠæ¯ä¸ªåˆ†åŒ…çš„é•¿åº¦
 				Msg_Packet.PKT_PUSH_NUM = msg_len>>MSG_PACKET_OFFSET;
 				for(j=0;j<Msg_Packet.PKT_PUSH_NUM;)
 				{
 					Msg_Packet.PKT_PUSH_LEN[j] = MSG_PACKET_MAX_VALUE;
-					//»ñÈ¡Ã¿°üÊı¾İ
+					//è·å–æ¯åŒ…æ•°æ®
 					my_memcpy(&Msg_Packet.PKT_PUSH_BUF[j][0],&MSG_Store.MSG_PUSH[MSG_STORE_IDX+(j<<MSG_PACKET_OFFSET)],MSG_PACKET_MAX_VALUE);
 					j++;
 				}
 				reminder = msg_len%MSG_PACKET_MAX_VALUE;
 				if(reminder)
 				{
-					//»ñÈ¡Ã¿°üÊı¾İ
+					//è·å–æ¯åŒ…æ•°æ®
 					my_memcpy(&Msg_Packet.PKT_PUSH_BUF[j][0],&MSG_Store.MSG_PUSH[MSG_STORE_IDX+(j<<MSG_PACKET_OFFSET)],reminder);
 					Msg_Packet.PKT_PUSH_LEN[j] = reminder;
-					Msg_Packet.PKT_PUSH_NUM++;//ÏÂ·¢µÄ·Ö°ü¸öÊı
+					Msg_Packet.PKT_PUSH_NUM++;//ä¸‹å‘çš„åˆ†åŒ…ä¸ªæ•°
 				}
 				else
 				{
 //					Msg_Packet.PKT_PUSH_LEN[j] = 0;
 				}
-				Msg_Packet.PKT_PUSH_SEQ = 0;//·Ö°üĞòºÅÇå0
+				Msg_Packet.PKT_PUSH_SEQ = 0;//åˆ†åŒ…åºå·æ¸…0
 				return TRUE;
 			}
 		}
@@ -294,7 +294,7 @@ uint8_t Message_Get(uint8_t msg_head)
 }
 
 /************************************************* 
-@Description:¶ÁĞ´Æ÷-Æô¶¯ÏûÏ¢ÃüÁî
+@Description:è¯»å†™å™¨-å¯åŠ¨æ¶ˆæ¯å‘½ä»¤
 @Input:
 @Output:
 @Return:
@@ -302,9 +302,9 @@ uint8_t Message_Get(uint8_t msg_head)
 void Radio_MSG_Start(uint8_t *msg_buf,uint8_t* src)
 {
 	uint8_t len;
-	msg_buf[RADIO_S0_IDX] = RADIO_S0_DIR_DOWN;//S0ÏÂĞĞ
-	my_memcpy(&msg_buf[TAG_ID_IDX],&src[TAG_ID_IDX],RADIO_ID_LENGTH);//2~5Ä¿±êID
-	my_memcpy(&msg_buf[READER_ID_IDX],&DeviceID,RADIO_RID_LENGTH);//6~9¶ÁĞ´Æ÷ID
+	msg_buf[RADIO_S0_IDX] = RADIO_S0_DIR_DOWN;//S0ä¸‹è¡Œ
+	my_memcpy(&msg_buf[TAG_ID_IDX],&src[TAG_ID_IDX],RADIO_ID_LENGTH);//2~5ç›®æ ‡ID
+	my_memcpy(&msg_buf[READER_ID_IDX],&DeviceID,RADIO_RID_LENGTH);//6~9è¯»å†™å™¨ID
 	msg_buf[CMD_IDX] = MESSAGE_CMD;
 	msg_buf[CMD_IDX+1] = MSG_START_END_VALUE>>8;
 	msg_buf[CMD_IDX+2] = MSG_START_END_VALUE;
@@ -314,38 +314,38 @@ void Radio_MSG_Start(uint8_t *msg_buf,uint8_t* src)
 }
 
 /************************************************* 
-@Description:¶ÁĞ´Æ÷-ÏûÏ¢·¢ËÍ
+@Description:è¯»å†™å™¨-æ¶ˆæ¯å‘é€
 @Input:
 @Output:
 @Return:
 *************************************************/ 
 void Radio_MSG_Push(uint8_t* src)
 {
-	cmd_packet.packet[RADIO_S0_IDX] = RADIO_S0_DIR_DOWN;//S0ÏÂĞĞ
-	my_memcpy(&cmd_packet.packet[TAG_ID_IDX],&src[TAG_ID_IDX],RADIO_ID_LENGTH);//2~5Ä¿±êID
-	my_memcpy(&cmd_packet.packet[READER_ID_IDX],&DeviceID,RADIO_RID_LENGTH);//6~9¶ÁĞ´Æ÷ID
-	cmd_packet.packet[CMD_IDX] = MESSAGE_CMD;//ÏûÏ¢ÃüÁî
+	cmd_packet.packet[RADIO_S0_IDX] = RADIO_S0_DIR_DOWN;//S0ä¸‹è¡Œ
+	my_memcpy(&cmd_packet.packet[TAG_ID_IDX],&src[TAG_ID_IDX],RADIO_ID_LENGTH);//2~5ç›®æ ‡ID
+	my_memcpy(&cmd_packet.packet[READER_ID_IDX],&DeviceID,RADIO_RID_LENGTH);//6~9è¯»å†™å™¨ID
+	cmd_packet.packet[CMD_IDX] = MESSAGE_CMD;//æ¶ˆæ¯å‘½ä»¤
 	Msg_Packet.MSG_PUSH_HEAD = 0;
-	Msg_Packet.MSG_PUSH_HEAD |=MSG_HEAD_Msk;//Êı¾İÖ¸Ê¾£¬±íÊ¾Ğ¯´øÏûÏ¢ÄÚÈİ
-	Msg_Packet.MSG_PUSH_HEAD |=	((Msg_Packet.MSG_PUSH_SEQ<<MSG_SEQ_Pos)&MSG_SEQ_Msk);//ÏÂ·¢µÄÏûÏ¢ĞòºÅ
-//	Msg_Packet.PKT_PUSH_NUM--;//·¢ËÍ³É¹¦ÔÙ¼õÒ»
-	if(Msg_Packet.PKT_PUSH_NUM-1)//ÏûÏ¢×ÜÊı¼õÒ»
+	Msg_Packet.MSG_PUSH_HEAD |=MSG_HEAD_Msk;//æ•°æ®æŒ‡ç¤ºï¼Œè¡¨ç¤ºæºå¸¦æ¶ˆæ¯å†…å®¹
+	Msg_Packet.MSG_PUSH_HEAD |=	((Msg_Packet.MSG_PUSH_SEQ<<MSG_SEQ_Pos)&MSG_SEQ_Msk);//ä¸‹å‘çš„æ¶ˆæ¯åºå·
+//	Msg_Packet.PKT_PUSH_NUM--;//å‘é€æˆåŠŸå†å‡ä¸€
+	if(Msg_Packet.PKT_PUSH_NUM-1)//æ¶ˆæ¯æ€»æ•°å‡ä¸€
 	{
-		Msg_Packet.MSG_PUSH_HEAD |= MSG_PKT_END_Msk;//»¹ÓĞ°üÒª·¢ËÍ
+		Msg_Packet.MSG_PUSH_HEAD |= MSG_PKT_END_Msk;//è¿˜æœ‰åŒ…è¦å‘é€
 	}
-	Msg_Packet.MSG_PUSH_HEAD |= (Msg_Packet.PKT_PUSH_SEQ&MSG_PKT_Seq_Msk);//°üĞòºÅ
-	//ÏûÏ¢Í·
+	Msg_Packet.MSG_PUSH_HEAD |= (Msg_Packet.PKT_PUSH_SEQ&MSG_PKT_Seq_Msk);//åŒ…åºå·
+	//æ¶ˆæ¯å¤´
 	cmd_packet.packet[MSG_HEAD_IDX] = Msg_Packet.MSG_PUSH_HEAD;
-	//¿½±´ÏûÏ¢Êı¾İ
+	//æ‹·è´æ¶ˆæ¯æ•°æ®
 	my_memcpy(&cmd_packet.packet[MSG_DATA_IDX],&Msg_Packet.PKT_PUSH_BUF[Msg_Packet.PKT_PUSH_SEQ][0],
 				Msg_Packet.PKT_PUSH_LEN[Msg_Packet.PKT_PUSH_SEQ]);
-	//µã¶Ôµã¹Ì¶¨³¤¶È+ÏûÏ¢Í·+ÏûÏ¢Êı¾İ³¤¶È
+	//ç‚¹å¯¹ç‚¹å›ºå®šé•¿åº¦+æ¶ˆæ¯å¤´+æ¶ˆæ¯æ•°æ®é•¿åº¦
 	cmd_packet.length = CMD_FIX_LENGTH + MSG_HEAD_LEN + Msg_Packet.PKT_PUSH_LEN[Msg_Packet.PKT_PUSH_SEQ];
-	//ÉäÆµ³¤¶È
+	//å°„é¢‘é•¿åº¦
 	cmd_packet.packet[RADIO_LENGTH_IDX] = cmd_packet.length ;
-	//Òì»ò
+	//å¼‚æˆ–
 	cmd_packet.packet[cmd_packet.length+RADIO_HEAD_LENGTH-1]=Get_Xor(cmd_packet.packet,(cmd_packet.length+1));
-	//°ü++
-//	Msg_Packet.PKT_PUSH_SEQ++;//·¢ËÍ³É¹¦ÔÙ¼Ó1
+	//åŒ…++
+//	Msg_Packet.PKT_PUSH_SEQ++;//å‘é€æˆåŠŸå†åŠ 1
 }
 

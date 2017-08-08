@@ -20,7 +20,7 @@ typedef enum
 
 extern void TID_RECORD_Clear(void);
 extern void radio_pwr(uint8_t txpower);
-extern void Raio_Deal(void);//ÉäÆµÖÜÆÚ·¢ËÍ
+extern void Raio_Deal(void);//å°„é¢‘å‘¨æœŸå‘é€
 extern void radio_select(uint8_t ch,uint8_t dir);
 uint8_t ID_CMP(const uint8_t *src,const uint8_t *dest);
 #endif

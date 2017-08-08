@@ -6,27 +6,32 @@
 #include "simple_uart.h"
 #include "Debug_log.h"
 #include "rtc.h"
+#include "tim.h"
 
-UART_Typedef U_Master;//¶¨Òå´®¿Ú»º³å
-extern Payload_Typedef cmd_packet;//ÃüÁîÉäÆµ´¦Àí
+UART_Typedef U_Master;//å®šä¹‰ä¸²å£ç¼“å†²
+extern Payload_Typedef cmd_packet;//å‘½ä»¤å°„é¢‘å¤„ç†
 const uint8_t UConfig_Self_ID[4] = {0xFF,0XFF,0XFF,0XFB};
 extern uint8_t DeviceID[4];
-extern uint8_t Work_Mode;//¹¤×÷Ä£Ê½
-extern MSG_Store_Typedef MSG_Store;//ÏûÏ¢
-rtc_typedef tmp_Time; //ÁÙÊ±»º´æÊ±¼ä
-extern rtc_typedef Global_Time;//È«¾ÖÊ±¼ä 
+extern uint8_t Work_Mode;//å·¥ä½œæ¨¡å¼
+extern MSG_Store_Typedef MSG_Store;//æ¶ˆæ¯
+rtc_typedef tmp_Time; //ä¸´æ—¶ç¼“å­˜æ—¶é—´
+extern rtc_typedef Global_Time;//å…¨å±€æ—¶é—´ 
 
+Time_Typedef Time_type;//è¶…æ—¶å¤„ç†
+
+//è¿‡æ»¤
+Filter_Typedef Filter_Radio;
 /********************************************************************
-Ê±¼äÉèÖÃ»úÖÆ£ºÆ½Ì¨Ã¿ÌìÏÂ·¢Ò»´ÎÊ±¼äÉèÖÃ£¬µ±Ê±¼äÏÂ·¢³É¹¦ºó£¬¸Ã±êÖ¾Î»ÖÃÎ»£¬
-µ±±êÇ©Ğ¯´ø½ÓÊÕ´°¿Ú£¬²¢ÇÒÊ±¼äÎ´¸üĞÂ¹ı£¬ÔòÍ¨¹ıÉäÆµÏÂ·¢Ê±¼äÉèÖÃ£¬Ò»¸öĞ¡Ê±¹ıºó£¬Í£Ö¹Ê±¼ä¸üĞÂ¹¦ÄÜ
+æ—¶é—´è®¾ç½®æœºåˆ¶ï¼šå¹³å°æ¯å¤©ä¸‹å‘ä¸€æ¬¡æ—¶é—´è®¾ç½®ï¼Œå½“æ—¶é—´ä¸‹å‘æˆåŠŸåï¼Œè¯¥æ ‡å¿—ä½ç½®ä½ï¼Œ
+å½“æ ‡ç­¾æºå¸¦æ¥æ”¶çª—å£ï¼Œå¹¶ä¸”æ—¶é—´æœªæ›´æ–°è¿‡ï¼Œåˆ™é€šè¿‡å°„é¢‘ä¸‹å‘æ—¶é—´è®¾ç½®ï¼Œä¸€ä¸ªå°æ—¶è¿‡åï¼Œåœæ­¢æ—¶é—´æ›´æ–°åŠŸèƒ½
 *******************************************************************/
-uint8_t Need_Time_Set;//1£ºÔÊĞíÉèÖÃÊ±¼ä0£º²»ÔÊĞíÉèÖÃÊ±¼ä
-uint8_t Hour;//Ò»¸öĞ¡Ê±¹ıºó£¬Í£Ö¹Ê±¼ä¸üĞÂ¹¦ÄÜ
+uint8_t Need_Time_Set;//1ï¼šå…è®¸è®¾ç½®æ—¶é—´0ï¼šä¸å…è®¸è®¾ç½®æ—¶é—´
+uint8_t Hour;//ä¸€ä¸ªå°æ—¶è¿‡åï¼Œåœæ­¢æ—¶é—´æ›´æ–°åŠŸèƒ½
 /************************************************* 
-@Description:ÃüÁî´¦Àí
+@Description:å‘½ä»¤å¤„ç†
 @Input:
-@Output:ÎŞ
-@Return:ÎŞ
+@Output:æ— 
+@Return:æ— 
 *************************************************/  
 u8 CRC16_Check(uint8_t* CRC16)
 {
@@ -41,10 +46,10 @@ u8 CRC16_Check(uint8_t* CRC16)
 
 
 /************************************************* 
-@Description: Í£Ö¹¸üĞÂÊ±¼ä
+@Description: åœæ­¢æ›´æ–°æ—¶é—´
 @Input:
-@Output:ÎŞ
-@Return:ÎŞ
+@Output:æ— 
+@Return:æ— 
 *************************************************/  
 void Stop_Update_Time(void)
 {
@@ -55,11 +60,31 @@ void Stop_Update_Time(void)
 }
 
 /************************************************* 
-@Description:ÃüÁî´¦Àí
+@Description:å‘½ä»¤å¤„ç†
 @Input:
-@Output:ÎŞ
-@Return:ÎŞ
+@Output:æ— 
+@Return:æ— 
 *************************************************/  
+/****************************************************
+ä¸²å£é€šä¿¡ ä¸Šä½æœº->æ¥æ”¶å™¨
+å†™å‘½ä»¤F0
+å‚æ•°è®¾ç½®ä¿¡æ¯å†…å®¹
+ç›®æ ‡IDï¼šXXXXXXXX 4å­—èŠ‚
+è¶…æ—¶æ—¶é—´:0~9  0ï¼šæ— è¶…æ—¶æ—¶é—´  å•ä½s
+ä¿ç•™ï¼š0000
+åŒºé€‰æ‹©ï¼š01~04
+å†™æœ€æ–°å‚æ•°:FFFF
+å†™é•¿åº¦ï¼š01~10
+æ•°æ®å†…å®¹ï¼šå­—èŠ‚æ•°ï¼Œæœ€å¤§16å­—èŠ‚
+-----------------------------------------------------
+è¯»å‘½ä»¤F1
+ç›®æ ‡IDï¼šXXXXXXXX 4å­—èŠ‚
+è¶…æ—¶æ—¶é—´:0~9  0ï¼šæ— è¶…æ—¶æ—¶é—´  å•ä½s
+ä¿ç•™ï¼š0000
+åŒºé€‰æ‹©ï¼š01~04
+è¯»æœ€æ–°å‚æ•°:FFFF  å‚æ•°åŒº ä¿ç•™åŒº 0~15 ç”¨æˆ·åŒº1ã€2 0~31
+é•¿åº¦ 01~10
+******************************************************/
 void Uart_Deal(void)
 {
 	uint8_t U_CMD;
@@ -72,96 +97,114 @@ void Uart_Deal(void)
 		U_Master.has_finished = 0;
 		if(CRC16_Check(&U_Master.rx_buf[U_Master.rx_idx-1]))
 		{
-			U_DATA_LEN = ((U_Master.rx_buf[U_LEN_IDX]<<8)|U_Master.rx_buf[U_LEN_IDX+1]) - U_AfterLEN_FIX_LEN;//ĞÅÏ¢³¤¶È
-			U_CMD = U_Master.rx_buf[U_CMD_IDX];//ÃüÁî´¦Àí
+			U_DATA_LEN = ((U_Master.rx_buf[U_LEN_IDX]<<8)|U_Master.rx_buf[U_LEN_IDX+1]) - U_AfterLEN_FIX_LEN;//ä¿¡æ¯é•¿åº¦
+			U_CMD = U_Master.rx_buf[U_CMD_IDX];//å‘½ä»¤å¤„ç†
 			switch(U_CMD)
 			{
-				case U_CMD_LIST_TAG:
-					Work_Mode = File_Deal;
-					break;
 				case U_CMD_WRITE_FILE:
-					if(0 == ID_CMP(&UConfig_Self_ID[0],&U_Master.rx_buf[U_DATA_IDX]))//¶Ô×ÔÉí½øĞĞÅäÖÃ
+				{
+					if(0 == ID_CMP(&UConfig_Self_ID[0],&U_Master.rx_buf[U_DATA_IDX]))//å¯¹è‡ªèº«è¿›è¡Œé…ç½®
 					{
 						
 					}
 					else
 					{
 						my_memset(cmd_packet.packet,0,PACKET_PAYLOAD_MAXSIZE);
-						cmd_packet.packet[RADIO_S0_IDX] = RADIO_S0_DIR_DOWN;//S0ÏÂĞĞ
-						my_memcpy(&cmd_packet.packet[TAG_ID_IDX],&U_Master.rx_buf[U_DATA_IDX],RADIO_ID_LENGTH);//2~5Ä¿±êID
-						my_memcpy(&cmd_packet.packet[READER_ID_IDX],&DeviceID,RADIO_RID_LENGTH);//6~9¶ÁĞ´Æ÷ID
+						cmd_packet.packet[RADIO_S0_IDX] = RADIO_S0_DIR_DOWN;//S0ä¸‹è¡Œ
+						my_memcpy(&cmd_packet.packet[TAG_ID_IDX],&U_Master.rx_buf[U_DATA_IDX],RADIO_ID_LENGTH);//2~5ç›®æ ‡ID
+						my_memcpy(&cmd_packet.packet[READER_ID_IDX],&DeviceID,RADIO_RID_LENGTH);//6~9è¯»å†™å™¨ID
 						cmd_packet.packet[CMD_IDX] = FILE_CMD_WRITE;
-						U_DATA_LEN = U_DATA_LEN - RADIO_ID_LENGTH - U_ConfigOT_LEN;//ÏÂ·¢µÄÃüÁî³¤¶È
-						my_memcpy(&cmd_packet.packet[CMD_IDX+1],&U_Master.rx_buf[U_FileData_IDX],U_DATA_LEN);//Êı¾İÄÚÈİ
+						U_DATA_LEN = U_DATA_LEN - RADIO_ID_LENGTH - U_ConfigOT_LEN;//ä¸‹å‘çš„å‘½ä»¤é•¿åº¦
+						my_memcpy(&cmd_packet.packet[CMD_IDX+1],&U_Master.rx_buf[U_FileData_IDX],U_DATA_LEN);//æ•°æ®å†…å®¹
 						cmd_packet.length = CMD_FIX_LENGTH + U_DATA_LEN ;
 						cmd_packet.packet[RADIO_LENGTH_IDX] = cmd_packet.length;
 						cmd_packet.packet[cmd_packet.length+RADIO_HEAD_LENGTH-1]=Get_Xor(cmd_packet.packet,cmd_packet.length+1);
 						Work_Mode = File_Deal;
-	
-						
+						Time_type.TimeOut_Cycle = U_Master.rx_buf[U_FileTimeOut_IDX];//è¶…æ—¶æ—¶é—´
+						if(Time_type.TimeOut_Cycle)
+						{
+							Time_type.TimeOut_Cycle = Time_type.TimeOut_Cycle*rtc_cont;
+							Time_type.Radio_Time_En = 1;//å¼€å§‹è®¡æ•°
+							Time_type.Radio_Time_Cnt = 0;//è®¡æ•°å€¼æ¸…0
+						}
 					}
+				}
 				break;
 				case U_CMD_READ_FILE:
-					if(0 == ID_CMP(&UConfig_Self_ID[0],&U_Master.rx_buf[U_DATA_IDX]))//¶Ô×ÔÉí½øĞĞÅäÖÃ
+				{
+					if(0 == ID_CMP(&UConfig_Self_ID[0],&U_Master.rx_buf[U_DATA_IDX]))//å¯¹è‡ªèº«è¿›è¡Œé…ç½®
 					{
 						
 					}
 					else
 					{
 						my_memset(cmd_packet.packet,0,PACKET_PAYLOAD_MAXSIZE);
-						cmd_packet.packet[RADIO_S0_IDX] = RADIO_S0_DIR_DOWN;//S0ÏÂĞĞ
-						my_memcpy(&cmd_packet.packet[TAG_ID_IDX],&U_Master.rx_buf[U_DATA_IDX],RADIO_ID_LENGTH);//2~5Ä¿±êID
-						my_memcpy(&cmd_packet.packet[READER_ID_IDX],&DeviceID,RADIO_RID_LENGTH);//6~9¶ÁĞ´Æ÷ID
+						cmd_packet.packet[RADIO_S0_IDX] = RADIO_S0_DIR_DOWN;//S0ä¸‹è¡Œ
+						my_memcpy(&cmd_packet.packet[TAG_ID_IDX],&U_Master.rx_buf[U_DATA_IDX],RADIO_ID_LENGTH);//2~5ç›®æ ‡ID
+						my_memcpy(&cmd_packet.packet[READER_ID_IDX],&DeviceID,RADIO_RID_LENGTH);//6~9è¯»å†™å™¨ID
 						cmd_packet.packet[CMD_IDX] = FILE_CMD_READ;
-						U_DATA_LEN = U_DATA_LEN - RADIO_ID_LENGTH - U_ConfigOT_LEN;//ÏÂ·¢µÄÃüÁî³¤¶È
-						my_memcpy(&cmd_packet.packet[CMD_IDX+1],&U_Master.rx_buf[U_FileData_IDX],U_DATA_LEN);//Êı¾İÄÚÈİ
+						U_DATA_LEN = U_DATA_LEN - RADIO_ID_LENGTH - U_ConfigOT_LEN;//ä¸‹å‘çš„å‘½ä»¤é•¿åº¦
+						my_memcpy(&cmd_packet.packet[CMD_IDX+1],&U_Master.rx_buf[U_FileData_IDX],U_DATA_LEN);//æ•°æ®å†…å®¹
 						cmd_packet.length = CMD_FIX_LENGTH + U_DATA_LEN ;
 						cmd_packet.packet[RADIO_LENGTH_IDX] = cmd_packet.length;
 						cmd_packet.packet[cmd_packet.length+RADIO_HEAD_LENGTH-1]=Get_Xor(cmd_packet.packet,cmd_packet.length+1);
 						Work_Mode = File_Deal;
+						Time_type.TimeOut_Cycle = U_Master.rx_buf[U_FileTimeOut_IDX];//è¶…æ—¶æ—¶é—´
+						if(Time_type.TimeOut_Cycle)
+						{
+							Time_type.TimeOut_Cycle = Time_type.TimeOut_Cycle*rtc_cont;
+							Time_type.Radio_Time_En = 1;//å¼€å§‹è®¡æ•°
+							Time_type.Radio_Time_Cnt = 0;//è®¡æ•°å€¼æ¸…0
+						}
 					}
+				}
 				break;
 				case U_CMD_MSG_PUSH:
-					U_DATA_LEN = U_Master.rx_buf[U_DATA_IDX];//ÏûÏ¢³¤¶È
-					if(U_DATA_LEN>MSG_MAX_LEN)//ÏûÏ¢³¤¶È³¬³ö×î´ó³¤¶È
+				{
+					U_DATA_LEN = U_Master.rx_buf[U_DATA_IDX];//æ¶ˆæ¯é•¿åº¦
+					if(U_DATA_LEN>MSG_MAX_LEN)//æ¶ˆæ¯é•¿åº¦è¶…å‡ºæœ€å¤§é•¿åº¦
 					{
-						state = (U_MSG_ERR<<8)|MSG_Store.MSG_Seq;//ÃüÁî×´Ì¬+ÏûÏ¢ĞòºÅ
+						
+						state = U_MSG_ERR;
 					}
 					else 
 					{
-						MSG_Store.MSG_Seq = (MSG_Store.MSG_Seq + 1)%MSG_SEQ_MAX_NUM;//ĞòÁĞºÅ+1
-						MSG_Store.MSG_BUFF[MSG_SEQ_IDX] = MSG_Store.MSG_Seq;//ÏûÏ¢ĞòºÅ
-						my_memcpy(&MSG_Store.MSG_BUFF[MSG_LEN_IDX],&U_Master.rx_buf[U_DATA_IDX],(U_Master.rx_buf[U_DATA_IDX]+1));//ÍùflashÖĞĞ´ÈëÏûÏ¢
+						MSG_Store.MSG_Seq = (MSG_Store.MSG_Seq + 1)%MSG_SEQ_MAX_NUM;//åºåˆ—å·+1
+						MSG_Store.MSG_BUFF[MSG_SEQ_IDX] = MSG_Store.MSG_Seq;//æ¶ˆæ¯åºå·
+						my_memcpy(&MSG_Store.MSG_BUFF[MSG_LEN_IDX],&U_Master.rx_buf[U_DATA_IDX],(U_Master.rx_buf[U_DATA_IDX]+1));//å¾€flashä¸­å†™å…¥æ¶ˆæ¯
 						MSG_Write(MSG_Store.MSG_IDX,MSG_Store.MSG_BUFF);
-						state = U_MSG_SUCCESS|MSG_Store.MSG_Seq;//ÃüÁî×´Ì¬+ÏûÏ¢ĞòºÅ
+						state = U_MSG_SUCCESS;
 					}
 					U_Master.tx_buf[U_HEADER_IDX] = pkt_head1;
 					U_Master.tx_buf[U_HEADER_IDX+1] = pkt_head2;
 					U_Master.len = U_MSG_ACK_LEN;
 					U_Master.tx_buf[U_LEN_IDX] =  U_Master.len>>8;
 					U_Master.tx_buf[U_LEN_IDX+1] =  U_Master.len;
-					U_Master.tx_buf[U_PROTOCOL_IDX] = U_PROTOCOL_VER;//Ğ­Òé
-					my_memcpy(&U_Master.tx_buf[U_ID_IDX],DeviceID,RADIO_ID_LENGTH);//¶ÁĞ´Æ÷ID
-					U_Master.tx_buf[U_TXGPS_IDX] = U_TXGPS_Value;//¶¨Î»ĞÅÏ¢
-					U_Master.tx_buf[U_SEQ_IDX] = U_SEQ_Value;//Á÷Ë®ºÅ
-					U_Master.tx_buf[U_CMD_IDX] = U_CMD_MSG_PUSH;//ÃüÁî
+					U_Master.tx_buf[U_PROTOCOL_IDX] = U_PROTOCOL_VER;//åè®®
+					my_memcpy(&U_Master.tx_buf[U_ID_IDX],DeviceID,RADIO_ID_LENGTH);//è¯»å†™å™¨ID
+					U_Master.tx_buf[U_TXGPS_IDX] = U_TXGPS_Value;//å®šä½ä¿¡æ¯
+					U_Master.tx_buf[U_SEQ_IDX] = U_SEQ_Value;//æµæ°´å·
+					U_Master.tx_buf[U_CMD_IDX] = U_CMD_MSG_PUSH;//å‘½ä»¤
 					U_Master.tx_buf[U_DATA_IDX] = state>>8;
-					U_Master.tx_buf[U_DATA_IDX] = state;
-					crc = crc16(&U_Master.tx_buf[U_LEN_IDX],(U_Master.len+U_LENTH_LEN));//³¤¶È~ĞÅÏ¢ÄÚÈİ
-					crc_idx = U_HEAD_LEN + U_LENTH_LEN + U_Master.len; //Ö¡Í·³¤¶È+³¤¶È³¤¶È+³¤¶ÈºóÃæµÄ³¤¶È
+					U_Master.tx_buf[U_DATA_IDX+1] = state;
+					U_Master.tx_buf[U_DATA_IDX+2] = MSG_Store.MSG_Seq;//æ¶ˆæ¯åºå·
+					crc = crc16(&U_Master.tx_buf[U_LEN_IDX],(U_Master.len+U_LENTH_LEN));//é•¿åº¦~ä¿¡æ¯å†…å®¹
+					crc_idx = U_HEAD_LEN + U_LENTH_LEN + U_Master.len; //å¸§å¤´é•¿åº¦+é•¿åº¦é•¿åº¦+é•¿åº¦åé¢çš„é•¿åº¦
 					U_Master.tx_buf[crc_idx] = (crc>>8);
 					U_Master.tx_buf[crc_idx+1] = crc;//crc
-					U_Master.len = U_Master.len + U_FIX_LEN;//Ö¡Í·2+³¤¶È2+Ğ£Ñé2+Êı¾İ³¤¶È
+					U_Master.len = U_Master.len + U_FIX_LEN;//å¸§å¤´2+é•¿åº¦2+æ ¡éªŒ2+æ•°æ®é•¿åº¦
 					UART_Send(U_Master.tx_buf,U_Master.len);
-//					debug_printf("\n\r³É¹¦¸üĞÂÏûÏ¢");
+//					debug_printf("\n\ræˆåŠŸæ›´æ–°æ¶ˆæ¯");
+				}
 				break;
 				case U_CMD_TIME_SET:
-					tmp_Time.year = U_Master.rx_buf[U_CMD_IDX+1];//Äê
-					tmp_Time.month = U_Master.rx_buf[U_CMD_IDX+2];//ÔÂ
-					tmp_Time.day = U_Master.rx_buf[U_CMD_IDX+3];//ÈÕ
-					tmp_Time.hour = U_Master.rx_buf[U_CMD_IDX+4];//Ê±
-					tmp_Time.min = U_Master.rx_buf[U_CMD_IDX+5];//Ãë
-					tmp_Time.sec = U_Master.rx_buf[U_CMD_IDX+6];//·Ö
+				{
+					tmp_Time.year = U_Master.rx_buf[U_CMD_IDX+1];//å¹´
+					tmp_Time.month = U_Master.rx_buf[U_CMD_IDX+2];//æœˆ
+					tmp_Time.day = U_Master.rx_buf[U_CMD_IDX+3];//æ—¥
+					tmp_Time.hour = U_Master.rx_buf[U_CMD_IDX+4];//æ—¶
+					tmp_Time.min = U_Master.rx_buf[U_CMD_IDX+5];//ç§’
+					tmp_Time.sec = U_Master.rx_buf[U_CMD_IDX+6];//åˆ†
 					if(TRUE == RTC_BCD_Check(&tmp_Time))
 					{
 						//BCD
@@ -173,7 +216,7 @@ void Uart_Deal(void)
 						Global_Time.sec = tmp_Time.sec;
 						Hour = tmp_Time.hour;
 						state = U_TIME_SUCCESS;
-						Need_Time_Set = Time_Update;//ÔÊĞíÉèÖÃÊ±¼ä
+						Need_Time_Set = Time_Update;//å…è®¸è®¾ç½®æ—¶é—´
 					}
 					else
 					{
@@ -184,21 +227,124 @@ void Uart_Deal(void)
 					U_Master.len = U_TIME_ACK_LEN;
 					U_Master.tx_buf[U_LEN_IDX] =  U_Master.len>>8;
 					U_Master.tx_buf[U_LEN_IDX+1] =  U_Master.len;
-					U_Master.tx_buf[U_PROTOCOL_IDX] = U_PROTOCOL_VER;//Ğ­Òé
-					my_memcpy(&U_Master.tx_buf[U_ID_IDX],DeviceID,RADIO_ID_LENGTH);//¶ÁĞ´Æ÷ID
-					U_Master.tx_buf[U_TXGPS_IDX] = U_TXGPS_Value;//¶¨Î»ĞÅÏ¢
-					U_Master.tx_buf[U_SEQ_IDX] = U_SEQ_Value;//Á÷Ë®ºÅ
-					U_Master.tx_buf[U_CMD_IDX] = U_CMD_TIME_SET;//ÃüÁî
+					U_Master.tx_buf[U_PROTOCOL_IDX] = U_PROTOCOL_VER;//åè®®
+					my_memcpy(&U_Master.tx_buf[U_ID_IDX],DeviceID,RADIO_ID_LENGTH);//è¯»å†™å™¨ID
+					U_Master.tx_buf[U_TXGPS_IDX] = U_TXGPS_Value;//å®šä½ä¿¡æ¯
+					U_Master.tx_buf[U_SEQ_IDX] = U_SEQ_Value;//æµæ°´å·
+					U_Master.tx_buf[U_CMD_IDX] = U_CMD_TIME_SET;//å‘½ä»¤
 					U_Master.tx_buf[U_DATA_IDX] = state>>8;
-					U_Master.tx_buf[U_DATA_IDX] = state;
-					crc = crc16(&U_Master.tx_buf[U_LEN_IDX],(U_Master.len+U_LENTH_LEN));//³¤¶È~ĞÅÏ¢ÄÚÈİ
-					crc_idx = U_HEAD_LEN + U_LENTH_LEN + U_Master.len; //Ö¡Í·³¤¶È+³¤¶È³¤¶È+³¤¶ÈºóÃæµÄ³¤¶È
+					U_Master.tx_buf[U_DATA_IDX+1] = state;
+					crc = crc16(&U_Master.tx_buf[U_LEN_IDX],(U_Master.len+U_LENTH_LEN));//é•¿åº¦~ä¿¡æ¯å†…å®¹
+					crc_idx = U_HEAD_LEN + U_LENTH_LEN + U_Master.len; //å¸§å¤´é•¿åº¦+é•¿åº¦é•¿åº¦+é•¿åº¦åé¢çš„é•¿åº¦
 					U_Master.tx_buf[crc_idx] = (crc>>8);
 					U_Master.tx_buf[crc_idx+1] = crc;//crc
-					U_Master.len = U_Master.len + U_FIX_LEN;//Ö¡Í·2+³¤¶È2+Ğ£Ñé2+Êı¾İ³¤¶È
+					U_Master.len = U_Master.len + U_FIX_LEN;//å¸§å¤´2+é•¿åº¦2+æ ¡éªŒ2+æ•°æ®é•¿åº¦
 					UART_Send(U_Master.tx_buf,U_Master.len);
-//					debug_printf("\n\r¸üĞÂÊ±¼ä");
+//					debug_printf("\n\ræ›´æ–°æ—¶é—´");
+				}
+				break;
+				case U_CMD_READER_ID:
+				{
+					U_Master.tx_buf[U_HEADER_IDX] = pkt_head1;
+					U_Master.tx_buf[U_HEADER_IDX+1] = pkt_head2;
+					U_Master.len = U_READER_ACK_LEN;
+					U_Master.tx_buf[U_LEN_IDX] =  U_Master.len>>8;
+					U_Master.tx_buf[U_LEN_IDX+1] =  U_Master.len;
+					U_Master.tx_buf[U_PROTOCOL_IDX] = U_PROTOCOL_VER;//åè®®
+					my_memcpy(&U_Master.tx_buf[U_ID_IDX],DeviceID,RADIO_ID_LENGTH);//è¯»å†™å™¨ID
+					U_Master.tx_buf[U_TXGPS_IDX] = U_TXGPS_Value;//å®šä½ä¿¡æ¯
+					U_Master.tx_buf[U_SEQ_IDX] = U_SEQ_Value;//æµæ°´å·
+					U_Master.tx_buf[U_CMD_IDX] = U_CMD_READER_ID;//å‘½ä»¤
+					my_memcpy(&U_Master.tx_buf[U_DATA_IDX],DeviceID,RADIO_ID_LENGTH);//è¯»å†™å™¨ID
+					crc = crc16(&U_Master.tx_buf[U_LEN_IDX],(U_Master.len+U_LENTH_LEN));//é•¿åº¦~ä¿¡æ¯å†…å®¹
+					crc_idx = U_HEAD_LEN + U_LENTH_LEN + U_Master.len; //å¸§å¤´é•¿åº¦+é•¿åº¦é•¿åº¦+é•¿åº¦åé¢çš„é•¿åº¦
+					U_Master.tx_buf[crc_idx] = (crc>>8);
+					U_Master.tx_buf[crc_idx+1] = crc;//crc
+					U_Master.len = U_Master.len + U_FIX_LEN;//å¸§å¤´2+é•¿åº¦2+æ ¡éªŒ2+æ•°æ®é•¿åº¦
+					UART_Send(U_Master.tx_buf,U_Master.len);
+				}
+				break;
+				case U_CMD_LIST_TAG:
+				{
+					Work_Mode = List_Tag;//åˆ—å‡ºæ ‡ç­¾
+					Filter_Radio.LP_Filter_En = ((U_Master.rx_buf[U_DATA_IDX]&U_LP_FILTEREN_Msk)>>U_LP_FILTEREN_Pos);
+					Filter_Radio.RSSI_Filter_En = ((U_Master.rx_buf[U_DATA_IDX+1]&U_RSSI_FILTEREN_Msk)>>U_RSSI_FILTEREN_Pos);
+					if(1 == Filter_Radio.RSSI_Filter_En)
+					{
+						Filter_Radio.RSSI_Filter_Value = ((U_Master.rx_buf[U_DATA_IDX+1]&U_RSSI_FILTERVALUE_Msk)>>U_RSSI_FILTERVALUE_Pos);
+					}
+					else
+					{
+						Filter_Radio.RSSI_Filter_Value = RADIO_RSSI_NO_Filter;//æœ€å¤§å€¼
+					}
+					Time_type.TimeOut_Cycle = ((U_Master.rx_buf[U_DATA_IDX]&U_SEARCH_TIME_Msk)>>U_SEARCH_TIME_Pos);//æŸ¥è¯¢æ—¶é—´
+					if(Time_type.TimeOut_Cycle)
+					{
+						TID_RECORD_Clear();//æ¸…ç©ºç¼“å­˜
+						Time_type.TimeOut_Cycle = Time_type.TimeOut_Cycle*rtc_cont;
+						Time_type.Radio_Time_En = 1;//å¼€å§‹è®¡æ•°
+						Time_type.Radio_Time_Cnt = 0;//è®¡æ•°å€¼æ¸…0
+					}
 					
+				}
+				break;
+				case U_CMD_LIST_READER:
+				{
+					Work_Mode = List_Reader;//åˆ—å‡ºè¯»å†™å™¨
+					Filter_Radio.LP_Filter_En = ((U_Master.rx_buf[U_DATA_IDX]&U_LP_FILTEREN_Msk)>>U_LP_FILTEREN_Pos);
+					Filter_Radio.RSSI_Filter_En = ((U_Master.rx_buf[U_DATA_IDX+1]&U_RSSI_FILTEREN_Msk)>>U_RSSI_FILTEREN_Pos);
+					if(1 == Filter_Radio.RSSI_Filter_En)
+					{
+						Filter_Radio.RSSI_Filter_Value = ((U_Master.rx_buf[U_DATA_IDX+1]&U_RSSI_FILTERVALUE_Msk)>>U_RSSI_FILTERVALUE_Pos);
+					}
+					else
+					{
+						Filter_Radio.RSSI_Filter_Value = RADIO_RSSI_NO_Filter;//æœ€å¤§å€¼
+					}
+					Time_type.TimeOut_Cycle = ((U_Master.rx_buf[U_DATA_IDX]&U_SEARCH_TIME_Msk)>>U_SEARCH_TIME_Pos);//æŸ¥è¯¢æ—¶é—´
+					if(Time_type.TimeOut_Cycle)
+					{
+						TID_RECORD_Clear();//æ¸…ç©ºç¼“å­˜
+						Time_type.TimeOut_Cycle = Time_type.TimeOut_Cycle*rtc_cont;
+						Time_type.Radio_Time_En = 1;//å¼€å§‹è®¡æ•°
+						Time_type.Radio_Time_Cnt = 0;//è®¡æ•°å€¼æ¸…0
+					}
+				}
+				break;
+				case U_CMD_AUTO_REPORT://è‡ªåŠ¨ä¸ŠæŠ¥
+				{
+					
+					if(U_Master.rx_buf[U_DATA_IDX+2] == 0x01)
+					{
+						Work_Mode = Auto_Reoprt;//åˆ—å‡ºè¯»å†™å™¨
+						Filter_Radio.LP_Filter_En = ((U_Master.rx_buf[U_DATA_IDX]&U_LP_FILTEREN_Msk)>>U_LP_FILTEREN_Pos);
+						Filter_Radio.RSSI_Filter_En = ((U_Master.rx_buf[U_DATA_IDX+1]&U_RSSI_FILTEREN_Msk)>>U_RSSI_FILTEREN_Pos);
+						if(1 == Filter_Radio.RSSI_Filter_En)
+						{
+							Filter_Radio.RSSI_Filter_Value = ((U_Master.rx_buf[U_DATA_IDX+1]&U_RSSI_FILTERVALUE_Msk)>>U_RSSI_FILTERVALUE_Pos);
+						}
+						else
+						{
+							Filter_Radio.RSSI_Filter_Value = RADIO_RSSI_NO_Filter;//æœ€å¤§å€¼
+						}
+						Time_type.TimeOut_Cycle = ((U_Master.rx_buf[U_DATA_IDX]&U_SEARCH_TIME_Msk)>>U_SEARCH_TIME_Pos);//æŸ¥è¯¢æ—¶é—´
+						if(Time_type.TimeOut_Cycle)
+						{
+							TID_RECORD_Clear();//æ¸…ç©ºç¼“å­˜
+							Time_type.TimeOut_Cycle = Time_type.TimeOut_Cycle*rtc_cont;
+							Time_type.Radio_Time_En = 1;//å¼€å§‹è®¡æ•°
+							Time_type.Radio_Time_Cnt = 0;//è®¡æ•°å€¼æ¸…0
+						}
+						Time_type.LeaveTime =(U_Master.rx_buf[U_DATA_IDX]&U_LEAVE_TIME_Msk)>>U_LEAVE_TIME_Pos;//ç§’
+					}
+					else
+					{
+						Time_type.Radio_Time_Cnt = 0;
+						Time_type.Radio_Time_En = 0;
+						Work_Mode = Idle;
+					}
+					
+				}
 				break;
 			}
 		}
@@ -206,21 +352,21 @@ void Uart_Deal(void)
 }
 
 /************************************************* 
-@Description:¼ÇÂ¼´®¿ÚÊı¾İ
+@Description:è®°å½•ä¸²å£æ•°æ®
 @Input:
-@Output:ÎŞ
-@Return:ÎŞ
+@Output:æ— 
+@Return:æ— 
 *************************************************/  
 void Uart_ReceiveBuff(uint8_t rx_temp)
 {
 	switch(U_Master.rx_state)
 	{
-		case PKT_HEAD1://Ö¡Í·1
+		case PKT_HEAD1://å¸§å¤´1
 			if(pkt_head1 == rx_temp)	                                
 			{                                                   
-				U_Master.rx_idx = 0;//Ë÷ÒıºÅÎª0
-				U_Master.rx_buf[U_Master.rx_idx] = rx_temp;//»º´æÊı¾İ
-				U_Master.rx_state = PKT_HEAD2;//×´Ì¬ÇĞ»»
+				U_Master.rx_idx = 0;//ç´¢å¼•å·ä¸º0
+				U_Master.rx_buf[U_Master.rx_idx] = rx_temp;//ç¼“å­˜æ•°æ®
+				U_Master.rx_state = PKT_HEAD2;//çŠ¶æ€åˆ‡æ¢
 			}
 			break;
 		case PKT_HEAD2:
@@ -238,7 +384,7 @@ void Uart_ReceiveBuff(uint8_t rx_temp)
 		case PKT_PUSH_LEN:
 			U_Master.rx_idx++;
 			U_Master.rx_buf[U_Master.rx_idx] = rx_temp;
-			if(U_Master.rx_idx == len_finish)//³¤¶È½ÓÊÕÍê³É
+			if(U_Master.rx_idx == len_finish)//é•¿åº¦æ¥æ”¶å®Œæˆ
 			{
 				U_Master.rx_len = (( U_Master.rx_buf[U_Master.rx_idx-1] << 8 ) | U_Master.rx_buf[U_Master.rx_idx]);
 				if(U_Master.rx_len>250)
@@ -251,7 +397,7 @@ void Uart_ReceiveBuff(uint8_t rx_temp)
 				}
 			}
 			break;
-		case PKT_DATA://»º´æÊı¾İ
+		case PKT_DATA://ç¼“å­˜æ•°æ®
 			if(U_Master.rx_len > 0)
 			{
 				U_Master.rx_idx++;
@@ -277,10 +423,10 @@ void Uart_ReceiveBuff(uint8_t rx_temp)
 	}
 }
 /************************************************* 
-@Description:´®¿ÚÖĞ¶Ï
+@Description:ä¸²å£ä¸­æ–­
 @Input:
-@Output:ÎŞ
-@Return:ÎŞ
+@Output:æ— 
+@Return:æ— 
 *************************************************/  
 void UART0_IRQHandler()
 {

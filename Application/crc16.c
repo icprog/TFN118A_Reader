@@ -56,10 +56,10 @@ const uint16_t wCRC16Table[] = {
 // 0x44, 0x84, 0x85, 0x45, 0x87, 0x47, 0x46, 0x86, 0x82, 0x42, 0x43, 0x83, 0x41, 0x81, 0x80, 0x40};
 
 /************************************************* 
-@Description:CRCĞ£Ñé
-@Input:srcÒª¼ìÑéµÄÊı×é£¬lenÒª¼ìÑéµÄ³¤¶È
-@Output:ÎŞ
-@Return:ÎŞ
+@Description:CRCæ ¡éªŒ
+@Input:srcè¦æ£€éªŒçš„æ•°ç»„ï¼Œlenè¦æ£€éªŒçš„é•¿åº¦
+@Output:æ— 
+@Return:æ— 
 *************************************************/  
 uint16_t crc16(uint8_t * src,uint16_t len)
 {		
@@ -73,7 +73,7 @@ uint16_t crc16(uint8_t * src,uint16_t len)
 	}     
 	return wResult;
 }
-/** 8×Ö½Ú¼ì±í
+/** 8å­—èŠ‚æ£€è¡¨
 */
 // uint16_t crc16_2(uint8_t * pin,uint16_t len)
 // {
@@ -98,7 +98,7 @@ uint16_t crc16(uint8_t * src,uint16_t len)
 // 	uint8_t j,tmp;
 // 	for( i = 0;i < len;i++)
 // 	{
-// 		//Ò»¸ö×Ö½ÚµÄĞ£Ñé´¦Àí
+// 		//ä¸€ä¸ªå­—èŠ‚çš„æ ¡éªŒå¤„ç†
 // 		tmp = *pin;
 // 		wResult ^= (tmp & 0x00ff);
 // 		for(j = 0;j < 8;j++)

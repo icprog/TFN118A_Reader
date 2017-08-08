@@ -5,22 +5,22 @@
 #include "app_msg.h"
 #include "Debug_log.h"
 #include "rtc.h"
-extern uint8_t Work_Mode;//¹¤×÷Ä£Ê½
-//ĞèÒªĞŞ¸ÄµÄ²ÎÊı
-#define win_interval 1//±êÇ©¿ª½ÓÊÕ´°¿Ú¼ä¸ô
-//Ğ¯´øÃüÁî
+extern uint8_t Work_Mode;//å·¥ä½œæ¨¡å¼
+//éœ€è¦ä¿®æ”¹çš„å‚æ•°
+#define win_interval 1//æ ‡ç­¾å¼€æ¥æ”¶çª—å£é—´éš”
+//æºå¸¦å‘½ä»¤
 typedef enum
 {
 	WithoutCmd = 0,
 	WithCmd
 }CMD_Typedef;
-//Ğ¯´ø½ÓÊÕ´°
+//æºå¸¦æ¥æ”¶çª—
 typedef enum
 {
 	WithoutWin = 0,
 	WithWin
 }WIN_Typedef;
-//ÊÇ·ñµÈ´ı·¢ËÍÍê³É
+//æ˜¯å¦ç­‰å¾…å‘é€å®Œæˆ
 typedef enum
 {
 	SendNoWait=0,
@@ -31,46 +31,47 @@ typedef enum
 extern uint8_t packet[PACKET_PAYLOAD_MAXSIZE];
 extern uint8_t DeviceID[4];
 extern uint8_t para_record[PARA_RECORD_LEN];
-//¶ÁĞ´Æ÷²ÎÊı
+//è¯»å†™å™¨å‚æ•°
 extern Para_Typedef Reader_Para;
-//ÉäÆµ½ÓÊÕ·¢ËÍÍê³É
-uint8_t radio_rcvok = 0;//ÉèÖÃ×ÔÉí²ÎÊı
+//å°„é¢‘æ¥æ”¶å‘é€å®Œæˆ
+uint8_t radio_rcvok = 0;//è®¾ç½®è‡ªèº«å‚æ•°
 uint8_t radio_sndok = 0;
-//ÉäÆµ»º³åÇø
-Payload_Typedef cmd_packet;//ÃüÁîÉäÆµ´¦Àí
-extern uint8_t radio_status;//ÉäÆµÔËĞĞ×´Ì¬
-uint8_t radio_run_channel;//ÉäÆµÔËĞĞÍ¨µÀ 
-//±êÇ©×´Ì¬×Ö
-uint8_t State_LP_Alarm;//µÍµç±¨¾¯
-uint8_t State_Key_Alram;//°´¼ü±¨¾¯
-const static uint8_t State_WithSensor = 1;//1:´«¸Ğ±êÇ© 0£º·Ç´«¸Ğ±êÇ©
+//å°„é¢‘ç¼“å†²åŒº
+Payload_Typedef cmd_packet;//å‘½ä»¤å°„é¢‘å¤„ç†
+extern uint8_t radio_status;//å°„é¢‘è¿è¡ŒçŠ¶æ€
+uint8_t radio_run_channel;//å°„é¢‘è¿è¡Œé€šé“ 
+//æ ‡ç­¾çŠ¶æ€å­—
+//ä¼ æ„Ÿæ•°æ®
+extern MSG_Store_Typedef MSG_Store;//
+//const static uint8_t State_WithSensor = 1;//1:ä¼ æ„Ÿæ ‡ç­¾ 0ï¼šéä¼ æ„Ÿæ ‡ç­¾
 //uint8_t State_WithWin;
-uint8_t State_Mode;//Ä£Ê½
-//´«¸ĞÊı¾İ
-uint8_t M_Seq;//ÏûÏ¢ĞòÁĞºÅ0~7
-uint8_t MSG_PUSH_State = MSG_IDLE;//ÏûÏ¢ÍÆËÍ×´Ì¬
-//ÏûÏ¢´¦Àí
+uint8_t State_Mode;//æ¨¡å¼
+//ä¼ æ„Ÿæ•°æ®
+uint8_t M_Seq;//æ¶ˆæ¯åºåˆ—å·0~7
+uint8_t MSG_PUSH_State = MSG_IDLE;//æ¶ˆæ¯æ¨é€çŠ¶æ€
+//æ¶ˆæ¯å¤„ç†
 extern Message_Typedef Msg_Packet;
 #define RADIO_RX_OT 	825
 
 void radio_pwr(uint8_t txpower);
 static void Radio_Period_Send(uint8_t cmdflag,uint8_t winflag,uint8_t wait_send_finish);
 
-//ÎÄ¼ş²Ù×÷
-File_Typedef f_para;//ÎÄ¼ş²Ù×÷ÃüÁîÊı¾İ»º´æ
-//´®¿Ú»º³å
+//æ–‡ä»¶æ“ä½œ
+File_Typedef f_para;//æ–‡ä»¶æ“ä½œå‘½ä»¤æ•°æ®ç¼“å­˜
+//ä¸²å£ç¼“å†²
 extern UART_Typedef U_Master;
-
-//¶ÁĞ´Æ÷-¼ÇÂ¼±êÇ©
+//è¿‡æ»¤
+extern Filter_Typedef Filter_Radio;
+//è¯»å†™å™¨-è®°å½•æ ‡ç­¾
 TID_Typedef  TID_RECORD[CAPACITY];
-void Radio_Cmd_Deal(void);//×ÔÉí²ÎÊıÉèÖÃ
-//Ê±¼äÉèÖÃ
-extern uint8_t Need_Time_Set;//1£ºÔÊĞíÉèÖÃÊ±¼ä0£º²»ÔÊĞíÉèÖÃÊ±¼ä
+void Radio_Cmd_Deal(void);//è‡ªèº«å‚æ•°è®¾ç½®
+//æ—¶é—´è®¾ç½®
+extern uint8_t Need_Time_Set;//1ï¼šå…è®¸è®¾ç½®æ—¶é—´0ï¼šä¸å…è®¸è®¾ç½®æ—¶é—´
 /*
-@Description:Çå¿Õ»º³å¼ÇÂ¼
+@Description:æ¸…ç©ºç¼“å†²è®°å½•
 @Input:state :
-@Output:ÎŞ
-@Return:ÎŞ
+@Output:æ— 
+@Return:æ— 
 */
 void TID_RECORD_Clear(void)
 {
@@ -82,20 +83,20 @@ void TID_RECORD_Clear(void)
 	
 }
 /*
-@Description:ÉäÆµÆô¶¯
+@Description:å°„é¢‘å¯åŠ¨
 @Input:state :
-@Output:ÎŞ
-@Return:ÎŞ
+@Output:æ— 
+@Return:æ— 
 */
 static void radio_on(void)
 {
-	xosc_hfclk_start();//Íâ²¿¾§ÕñÆğÕñ
+	xosc_hfclk_start();//å¤–éƒ¨æ™¶æŒ¯èµ·æŒ¯
 }
 /*
-Description:ÉäÆµ¹Ø±Õ
+Description:å°„é¢‘å…³é—­
 Input:state :
-Output:ÎŞ
-Return:ÎŞ
+Output:æ— 
+Return:æ— 
 */
 static void radio_off(void)
 {
@@ -104,18 +105,18 @@ static void radio_off(void)
 }
 
 /*
-Description:ÉäÆµÑ¡Ôñ
+Description:å°„é¢‘é€‰æ‹©
 Input:state :
-Output:ÎŞ
-Return:ÎŞ
+Output:æ— 
+Return:æ— 
 */
 void radio_select(uint8_t ch,uint8_t dir)
 {
 	uint8_t channel;
-	radio_on();//¿ªÆô¾§Õñ
+	radio_on();//å¼€å¯æ™¶æŒ¯
 	channel = (ch == DATA_CHANNEL)?RADIO_CHANNEL_DATA:RADIO_CHANNEL_CONFIG;
 	radio_run_channel = (ch == DATA_CHANNEL)?RADIO_RUN_DATA_CHANNEL:RADIO_RUN_CONFIG_CHANNEL;
-	NRF_RADIO->DATAWHITEIV = channel;//Êı¾İ°×»¯
+	NRF_RADIO->DATAWHITEIV = channel;//æ•°æ®ç™½åŒ–
 	if(dir == RADIO_TX)
 	{
 		radio_tx_carrier(RADIO_MODE_MODE_Nrf_1Mbit,channel);
@@ -128,31 +129,31 @@ void radio_select(uint8_t ch,uint8_t dir)
 }
 
 /*
-@Description:ÉäÆµÖÜÆÚ·¢ËÍ
+@Description:å°„é¢‘å‘¨æœŸå‘é€
 @Input:state :
-@Output:ÎŞ
-@Return:ÎŞ
+@Output:æ— 
+@Return:æ— 
 */
 void Raio_Deal(void)
 {
 	uint32_t ot;
-	//Æ½Ê±´¦ÓÚ½ÓÊÕ×´Ì¬£¬Å¼¶û²åÈëÒ»´Î·¢ËÍ
+	//å¹³æ—¶å¤„äºæ¥æ”¶çŠ¶æ€ï¼Œå¶å°”æ’å…¥ä¸€æ¬¡å‘é€
 	if(Reader_Para.radio_send_en)
 	{
 		Reader_Para.radio_send_en = 0;
-		Radio_Period_Send(WithoutCmd,WithoutWin,SendWait);//µÈ´ı·¢ËÍÍê³É
-		//ºóĞø¿¼ÂÇÊÇ·ñÔÊĞíÍ¨¹ıÅäÖÃÆµµÀ¸ü¸ÄÉäÆµ²ÎÊı
-		ot = RADIO_RX_OT;//½ÓÊÕ´°Ê±¼ä
+		Radio_Period_Send(WithoutCmd,WithoutWin,SendWait);//ç­‰å¾…å‘é€å®Œæˆ
+		//åç»­è€ƒè™‘æ˜¯å¦å…è®¸é€šè¿‡é…ç½®é¢‘é“æ›´æ”¹å°„é¢‘å‚æ•°
+		ot = RADIO_RX_OT;//æ¥æ”¶çª—æ—¶é—´
 		while(--ot)
 		{
 			if(radio_rcvok)
 				break;
 				
 		}	
-		if(radio_rcvok)//½ÓÊÕ³É¹¦£¬ÉèÖÃ×ÔÉí²ÎÊı
+		if(radio_rcvok)//æ¥æ”¶æˆåŠŸï¼Œè®¾ç½®è‡ªèº«å‚æ•°
 		{
 			radio_rcvok = 0;
-			Radio_Cmd_Deal();//ÃüÁî´¦Àí
+			Radio_Cmd_Deal();//å‘½ä»¤å¤„ç†
 		}		
 		radio_select(DATA_CHANNEL,RADIO_RX);
 	}
@@ -160,12 +161,12 @@ void Raio_Deal(void)
 }
 
 /***********************************************************
-@Description:ÖÜÆÚ·¢ËÍÉäÆµĞÅÏ¢,²¢µÈ´ı·¢ËÍÍê³É
-@Input£º	cmdflag - ÃüÁî·µ»Ø 1£º·µ»ØÃüÁî 0£º³£¹æ·¢ËÍ
-				winflag - ÊÇ·ñĞ¯´ø´°¿Ú
-				wait_send_finish:1:µÈ´ı·¢ËÍÍê³É£¬0:²»µÈ´ı
-@Output£ºÎŞ
-@Return:ÎŞ
+@Description:å‘¨æœŸå‘é€å°„é¢‘ä¿¡æ¯,å¹¶ç­‰å¾…å‘é€å®Œæˆ
+@Inputï¼š	cmdflag - å‘½ä»¤è¿”å› 1ï¼šè¿”å›å‘½ä»¤ 0ï¼šå¸¸è§„å‘é€
+				winflag - æ˜¯å¦æºå¸¦çª—å£
+				wait_send_finish:1:ç­‰å¾…å‘é€å®Œæˆï¼Œ0:ä¸ç­‰å¾…
+@Outputï¼šæ— 
+@Return:æ— 
 ************************************************************/
 static void Radio_Period_Send(uint8_t cmdflag,uint8_t winflag,uint8_t wait_send_finish)
 {
@@ -174,27 +175,23 @@ static void Radio_Period_Send(uint8_t cmdflag,uint8_t winflag,uint8_t wait_send_
 	if(cmdflag)
 	{
 		memcpy(packet,cmd_packet.packet,cmd_packet.length+RADIO_HEAD_LENGTH);
-		radio_select(CONFIG_CHANNEL,RADIO_TX);//ÅäÖÃÆµµÀ
+		radio_select(CONFIG_CHANNEL,RADIO_TX);//é…ç½®é¢‘é“
 //		while()
 	}
 	else
 	{
 		my_memset(packet,0,PACKET_PAYLOAD_MAXSIZE);
 		packet[RADIO_S0_IDX] = RADIO_S0_DIR_UP;
-		packet[RADIO_LENGTH_IDX] = 0; //payload³¤¶È£¬ºóĞø¸üĞÂ
-		my_memcpy(packet+TAG_ID_IDX,DeviceID,4);//2~5±êÇ©ID
-		packet[TAG_STATE_IDX] |= State_LP_Alarm << TAG_LOWPWR_Pos;//µÍµçÖ¸Ê¾
-		packet[TAG_STATE_IDX] |= State_Key_Alram << TAG_KEY_Pos;//°´¼üÖ¸Ê¾
-		packet[TAG_STATE_IDX] |= State_WithSensor << TAG_WITHSENSOR_Pos;//´«¸ĞÖ¸Ê¾
-		packet[TAG_STATE_IDX] |= winflag << TAG_WITHWIN_Pos;//½ÓÊÕ´°Ö¸Ê¾
-		packet[TAG_STATE_IDX] |= State_Mode << TAG_MODE_Pos;//Ä£Ê½Ö¸Ê¾
-		packet[TAG_VERSION_IDX] |= TAG_HDVER_NUM << TAG_HDVERSION_POS;//Ó²¼ş°æ±¾ºÅ
-		packet[TAG_VERSION_IDX] |= TAG_SFVER_NUM << TAG_SFVERSION_POS;//Èí¼ş°æ±¾ºÅ
-		packet[TAG_STYPE_IDX] = TAG_SENSORTYPE_SchoolWatch;//±êÇ©ÀàĞÍ
-		packet[TAG_SDATA_IDX] |= M_Seq << TAG_MSEQ_Pos;//´«¸ĞÊı¾İ
-		cmd_packet.length = TAG_SDATA_IDX;//PAYLOAD³¤¶È 
+		packet[RADIO_LENGTH_IDX] = 0; //payloadé•¿åº¦ï¼Œåç»­æ›´æ–°
+		my_memcpy(packet+TAG_ID_IDX,DeviceID,4);//2~5æ ‡ç­¾ID
+		packet[READER_UP_STATE_IDX] = 0x00;
+		packet[READER_UP_VERSION_IDX] |= TAG_HDVER_NUM << TAG_HDVERSION_POS;//ç¡¬ä»¶ç‰ˆæœ¬å·
+		packet[READER_UP_VERSION_IDX] |= TAG_SFVER_NUM << TAG_SFVERSION_POS;//è½¯ä»¶ç‰ˆæœ¬å·
+		packet[READER_UP_STYPE_IDX] = READER_UP_SENSORTYPE_SchoolWatch;//ç±»å‹
+		packet[TAG_SDATA_IDX] |= MSG_Store.MSG_Seq << TAG_MSEQ_Pos;//ä¼ æ„Ÿæ•°æ®
+		cmd_packet.length = READER_UP_SDATA_IDX;//PAYLOADé•¿åº¦ 
 		packet[RADIO_LENGTH_IDX] = cmd_packet.length ;
-		packet[TAG_SDATA_IDX+1] = Get_Xor(packet,cmd_packet.length+1);//S0+max_length+PAYLOAD
+		packet[READER_UP_SDATA_IDX+1] = Get_Xor(packet,cmd_packet.length+1);//S0+max_length+PAYLOAD
 		
 	}
 	if(cmdflag)
@@ -205,7 +202,7 @@ static void Radio_Period_Send(uint8_t cmdflag,uint8_t winflag,uint8_t wait_send_
 	{
 		radio_select(DATA_CHANNEL,RADIO_TX);
 	}
-	//ÊÇ·ñµÈ´ı·¢ËÍÍê³É
+	//æ˜¯å¦ç­‰å¾…å‘é€å®Œæˆ
 	if(1 == wait_send_finish)
 	{
 		radio_sndok = 0;
@@ -220,10 +217,10 @@ static void Radio_Period_Send(uint8_t cmdflag,uint8_t winflag,uint8_t wait_send_
 }
 
 /************************************************* 
-Description:ÉäÆµ¹¦ÂÊÑ¡Ôñ
-Input:ÊäÈë·¢Éä¹¦ÂÊ
-Output:ÎŞ
-Return:ÎŞ
+Description:å°„é¢‘åŠŸç‡é€‰æ‹©
+Input:è¾“å…¥å‘å°„åŠŸç‡
+Output:æ— 
+Return:æ— 
 *************************************************/  
 void radio_pwr(uint8_t txpower)
 {
@@ -260,10 +257,10 @@ void radio_pwr(uint8_t txpower)
 }
 
 /*
-Description:Òì»ò¼ì²é
-Input:src:Ô­Êı×é£¬³¤¶È
+Description:å¼‚æˆ–æ£€æŸ¥
+Input:src:åŸæ•°ç»„ï¼Œé•¿åº¦
 Output:
-Return:ÎŞ
+Return:æ— 
 */
 uint8_t Xor_Check(uint8_t *src,uint8_t size)
 {
@@ -281,10 +278,10 @@ uint8_t Xor_Check(uint8_t *src,uint8_t size)
 }
 
 /*
-Description:ID¶Ô±È
+Description:IDå¯¹æ¯”
 Input:src:
 Output:
-Return:ÎŞ
+Return:æ— 
 */
 uint8_t ID_CMP(const uint8_t *src,const uint8_t *dest)
 {
@@ -298,20 +295,21 @@ uint8_t ID_CMP(const uint8_t *src,const uint8_t *dest)
 		return 1;
 	return 0;
 }
+
 /*
-Description:±êÇ©¼ÇÂ¼
-Input:src:
-Output:
-Return:ÎŞ
+@Description:è¯»å†™å™¨è®°å½•
+@Input:src:
+@Output:
+@Return:æ— 
 */
-void tag_record(uint8_t *t_packet)
+void reader_record(uint8_t *t_packet)
 {
 	uint8_t i,j;
 	for(i=0,j=CAPACITY;i<CAPACITY;i++)
 	{
-		if(TID_RECORD[i].TID[0]==READER_ID_MBYTE)
+		if(TID_RECORD[i].TID[3]==READER_ID_MBYTE)
 		{
-			if(j > i) j=i;//¼ÇÂ¼ÏÂµÚÒ»¸ö³öÏÖ0xffµÄË÷ÒıºÅ
+			if(j > i) j=i;//è®°å½•ä¸‹æœ€åä¸€ä¸ªå‡ºç°0xffçš„ç´¢å¼•å·
 		}
 		else if(0 == ID_CMP(&t_packet[TAG_ID_IDX],&TID_RECORD[i].TID[0]))
 		{
@@ -319,9 +317,9 @@ void tag_record(uint8_t *t_packet)
 			break;
 		}
 	}
-	if(j < CAPACITY)//ÔÊĞí¼ÇÂ¼
+	if(j < CAPACITY)//å…è®¸è®°å½•
 	{
-		if(i == CAPACITY)//ĞÂ¼ÍÂ¼
+		if(i == CAPACITY)//æ–°çºªå½•
 		{
 			TID_RECORD[j].TID[0] = t_packet[TAG_ID_IDX];
 			TID_RECORD[j].TID[1] = t_packet[TAG_ID_IDX + 1];
@@ -330,20 +328,75 @@ void tag_record(uint8_t *t_packet)
 			TID_RECORD[j].State =  t_packet[TAG_STATE_IDX];
 			TID_RECORD[j].Sensor_Type = t_packet[TAG_STYPE_IDX];
 			TID_RECORD[j].Sensor_Data[0] = t_packet[TAG_SDATA_IDX];
+			TID_RECORD[j].VER = t_packet[TAG_VERSION_IDX];
+			TID_RECORD[j].RSSI = NRF_RADIO->RSSISAMPLE;
+			
 		}
-		else//¸üĞÂÊı¾İ
+		else//æ›´æ–°æ•°æ®
 		{
 			TID_RECORD[j].State =  t_packet[TAG_STATE_IDX];
 			TID_RECORD[j].Sensor_Type = t_packet[TAG_STYPE_IDX];
-			TID_RECORD[j].Sensor_Data[0] = t_packet[TAG_SDATA_IDX];			
+			TID_RECORD[j].Sensor_Data[0] = t_packet[TAG_SDATA_IDX];		
+			TID_RECORD[j].RSSI = NRF_RADIO->RSSISAMPLE;
+			TID_RECORD[j].VER = t_packet[TAG_VERSION_IDX];
+			
 		}
 	}
 }
+
 /*
-@Description:×ÔÉí²ÎÊıÉèÖÃ
+Description:æ ‡ç­¾è®°å½•
+Input:src:
+Output:
+Return:æ— 
+*/
+void tag_record(uint8_t *t_packet)
+{
+	uint8_t i,j;
+	for(i=0,j=CAPACITY;i<CAPACITY;i++)
+	{
+		if(TID_RECORD[i].TID[0]==READER_ID_MBYTE)
+		{
+			if(j > i) j=i;//è®°å½•ä¸‹ç¬¬ä¸€ä¸ªå‡ºç°0xffçš„ç´¢å¼•å·
+		}
+		else if(0 == ID_CMP(&t_packet[TAG_ID_IDX],&TID_RECORD[i].TID[0]))
+		{
+			j=i;
+			break;
+		}
+	}
+	if(j < CAPACITY)//å…è®¸è®°å½•
+	{
+		if(i == CAPACITY)//æ–°çºªå½•
+		{
+			TID_RECORD[j].TID[0] = t_packet[TAG_ID_IDX];
+			TID_RECORD[j].TID[1] = t_packet[TAG_ID_IDX + 1];
+			TID_RECORD[j].TID[2] = t_packet[TAG_ID_IDX + 2];
+			TID_RECORD[j].TID[3] = t_packet[TAG_ID_IDX + 3];
+			TID_RECORD[j].State =  t_packet[TAG_STATE_IDX];
+			TID_RECORD[j].Sensor_Type = t_packet[TAG_STYPE_IDX];
+			TID_RECORD[j].Sensor_Data[0] = t_packet[TAG_SDATA_IDX];
+			TID_RECORD[j].VER = t_packet[TAG_VERSION_IDX];
+			TID_RECORD[j].RSSI = NRF_RADIO->RSSISAMPLE;
+			TID_RECORD[j].LeaveTime = 0;
+		}
+		else//æ›´æ–°æ•°æ®
+		{
+			TID_RECORD[j].State =  t_packet[TAG_STATE_IDX];
+			TID_RECORD[j].Sensor_Type = t_packet[TAG_STYPE_IDX];
+			TID_RECORD[j].Sensor_Data[0] = t_packet[TAG_SDATA_IDX];		
+			TID_RECORD[j].RSSI = NRF_RADIO->RSSISAMPLE;
+			TID_RECORD[j].VER = t_packet[TAG_VERSION_IDX];
+			TID_RECORD[j].LeaveTime = 0;
+		}
+	}
+}
+
+/*
+@Description:è‡ªèº«å‚æ•°è®¾ç½®
 @Input:src:
 @Output:
-@Return:ÎŞ
+@Return:æ— 
 */
 void Radio_Cmd_Deal(void)
 {
@@ -351,12 +404,12 @@ void Radio_Cmd_Deal(void)
 	cmd_packet.length = 0;
 
 	my_memcpy(cmd_packet.packet,packet,packet[RADIO_LENGTH_IDX]+RADIO_HEAD_LENGTH);
-	if(0 == ID_CMP(DeviceID,packet + TAG_ID_IDX)== 0)//µã¶Ôµã
+	if(0 == ID_CMP(DeviceID,packet + TAG_ID_IDX)== 0)//ç‚¹å¯¹ç‚¹
 	{
 		cmd = cmd_packet.packet[CMD_IDX];
 		switch(cmd)
 		{
-			case FILE_CMD_READ://ÎÄ¼ş¶ÁÈ¡-µã¶Ôµã
+			case FILE_CMD_READ://æ–‡ä»¶è¯»å–-ç‚¹å¯¹ç‚¹
 				f_para.mode = cmd_packet.packet[FILE_MODE_IDX];
 				f_para.offset = cmd_packet.packet[FILE_OFFSET_IDX]<<8|cmd_packet.packet[FILE_OFFSET_IDX+1];
 				f_para.length = cmd_packet.packet[FILE_LENGTH_IDX];
@@ -364,30 +417,30 @@ void Radio_Cmd_Deal(void)
 				{
 					cmd_packet.length = CMD_ACK_FIX_LENGTH + f_para.length;
 				}
-				else//Ö»·µ»ØÖ´ĞĞ×´Ì¬
+				else//åªè¿”å›æ‰§è¡ŒçŠ¶æ€
 				{
 					cmd_packet.length = CMD_ACK_FIX_LENGTH;
 				}
-				cmd_packet.packet[RADIO_S0_IDX] = RADIO_S0_DIR_UP;//ÉÏĞĞ
+				cmd_packet.packet[RADIO_S0_IDX] = RADIO_S0_DIR_UP;//ä¸Šè¡Œ
 				cmd_packet.packet[RADIO_LENGTH_IDX] = cmd_packet.length;
 				cmd_packet.packet[cmd_packet.length+RADIO_HEAD_LENGTH-1]=Get_Xor(cmd_packet.packet,cmd_packet.length+1);
-				Radio_Period_Send(WithCmd,WithoutWin,SendWait);//µÈ´ı·¢ËÍÍê³É
+				Radio_Period_Send(WithCmd,WithoutWin,SendWait);//ç­‰å¾…å‘é€å®Œæˆ
 				break;
-			case FILE_CMD_WRITE://ÎÄ¼şĞ´Èë-µã¶Ôµã
+			case FILE_CMD_WRITE://æ–‡ä»¶å†™å…¥-ç‚¹å¯¹ç‚¹
 				f_para.mode = cmd_packet.packet[FILE_MODE_IDX];
 				f_para.offset = cmd_packet.packet[FILE_OFFSET_IDX]<<8|cmd_packet.packet[FILE_OFFSET_IDX+1];
 				f_para.length = cmd_packet.packet[FILE_LENGTH_IDX];
 				Write_Para(f_para,cmd_packet.packet);
-				cmd_packet.packet[RADIO_S0_IDX] = RADIO_S0_DIR_UP;//ÉÏĞĞ
+				cmd_packet.packet[RADIO_S0_IDX] = RADIO_S0_DIR_UP;//ä¸Šè¡Œ
 				cmd_packet.length = CMD_ACK_FIX_LENGTH;
 				cmd_packet.packet[RADIO_LENGTH_IDX] = cmd_packet.length;
 				cmd_packet.packet[cmd_packet.length+RADIO_HEAD_LENGTH-1]=Get_Xor(cmd_packet.packet,cmd_packet.length+1);
-				Radio_Period_Send(WithCmd,WithoutWin,SendWait);//µÈ´ı·¢ËÍÍê³É
+				Radio_Period_Send(WithCmd,WithoutWin,SendWait);//ç­‰å¾…å‘é€å®Œæˆ
 				break;
 			default:break;	
 		}							
 	}
-	else if(READER_ID_MBYTE == packet[TAG_ID_IDX])//¹ã²¥
+	else if(READER_ID_MBYTE == packet[TAG_ID_IDX])//å¹¿æ’­
 	{
 		
 	}
@@ -396,105 +449,156 @@ void Radio_Cmd_Deal(void)
 }
 
 /************************************************* 
-@Description:ÉäÆµÊ±¼äÉèÖÃ
-@Input:ÎŞ
-@Output:ÎŞ
-@Return:ÎŞ
+@Description:å°„é¢‘æ—¶é—´è®¾ç½®
+@Input:æ— 
+@Output:æ— 
+@Return:æ— 
 *************************************************/ 
 void Radio_Time_Set(uint8_t* tPacket,uint8_t* psrc)
 {
 	uint8_t len;
-	tPacket[RADIO_S0_IDX] = RADIO_S0_DIR_DOWN;//S0ÏÂĞĞ
-	my_memcpy(&tPacket[TAG_ID_IDX],&psrc[TAG_ID_IDX],RADIO_ID_LENGTH);//2~5Ä¿±êID
-	my_memcpy(&tPacket[READER_ID_IDX],&DeviceID,RADIO_RID_LENGTH);//6~9¶ÁĞ´Æ÷ID
-	tPacket[CMD_IDX] = TIME_SET_CMD;//ÃüÁî
-	TIME_BCDToDec(&tPacket[CMD_IDX+1]);//ÃüÁî²ÎÊı
+	tPacket[RADIO_S0_IDX] = RADIO_S0_DIR_DOWN;//S0ä¸‹è¡Œ
+	my_memcpy(&tPacket[TAG_ID_IDX],&psrc[TAG_ID_IDX],RADIO_ID_LENGTH);//2~5ç›®æ ‡ID
+	my_memcpy(&tPacket[READER_ID_IDX],&DeviceID,RADIO_RID_LENGTH);//6~9è¯»å†™å™¨ID
+	tPacket[CMD_IDX] = TIME_SET_CMD;//å‘½ä»¤
+	TIME_BCDToDec(&tPacket[CMD_IDX+1]);//å‘½ä»¤å‚æ•°
 	len = CMD_FIX_LENGTH + TIME_PARA_LEN;
 	tPacket[RADIO_LENGTH_IDX] = len;
 	tPacket[len+RADIO_HEAD_LENGTH-1]=Get_Xor(tPacket,(len+1));
 }
 
 /************************************************* 
-@Description:RADIOÖĞ¶Ï´¦Àí³ÌĞò
-@Input:ÎŞ
-@Output:ÎŞ
-@Return:ÎŞ
+@Description:RADIOä¸­æ–­å¤„ç†ç¨‹åº
+@Input:æ— 
+@Output:æ— 
+@Return:æ— 
 *************************************************/
 void Radio_RX_Deal(void)
 {
 	u16 state;
 	if(TRUE == Xor_Check(packet,packet[RADIO_LENGTH_IDX]+2))
 	{
-		if( RADIO_RUN_DATA_CHANNEL == radio_run_channel )//Êı¾İÆµµÀ²É¼¯±êÇ©ĞÅÏ¢
+		if( RADIO_RUN_DATA_CHANNEL == radio_run_channel )//æ•°æ®é¢‘é“é‡‡é›†æ ‡ç­¾ä¿¡æ¯
 		{
 			if(Idle ==  Work_Mode)
 			{
-				tag_record(packet);//±êÇ©ÊÕ¼¯
-				if ( ((packet[TAG_STATE_IDX]&TAG_WIHTWIN_Msk)>>TAG_WITHWIN_Pos) == WithWin )//Ğ¯´ø½ÓÊÕ´°¿Ú
+				tag_record(packet);//æ ‡ç­¾æ”¶é›†
+				if ( ((packet[TAG_STATE_IDX]&TAG_WIHTWIN_Msk)>>TAG_WITHWIN_Pos) == WithWin )//æºå¸¦æ¥æ”¶çª—å£
 				{
-					//ÏûÏ¢´¦Àí
-//					debug_printf("\n\rĞ¯´ø½ÓÊÕ´°¿Ú");
-					if(TRUE == Message_Get(packet[TAG_SDATA_IDX]))//²¢ÇÒÓĞĞÂĞÅÏ¢·¢ËÍ
+					//æ¶ˆæ¯å¤„ç†
+//					debug_printf("\n\ræºå¸¦æ¥æ”¶çª—å£");
+					if(TRUE == Message_Get(packet[TAG_SDATA_IDX]))//å¹¶ä¸”æœ‰æ–°ä¿¡æ¯å‘é€
 					{
 						memcpy(Msg_Packet.MSG_PUSH_TID,packet+TAG_ID_IDX,RADIO_RID_LENGTH);
 						Radio_MSG_Start(cmd_packet.packet,packet);
-						cmd_packet.length = cmd_packet.packet[RADIO_LENGTH_IDX];//ÉäÆµÊı¾İ³¤¶È
-						Radio_Period_Send(WithCmd,WithWin,SendNoWait);//ÅäÖÃÆµµÀÏÂ·¢ÃüÁî
-						Work_Mode = Msg_Deal;//ÏûÏ¢´¦Àí
-//						debug_printf("\n\rÏÂ·¢ÏûÏ¢Í¨ÖªÃüÁî");
+						cmd_packet.length = cmd_packet.packet[RADIO_LENGTH_IDX];//å°„é¢‘æ•°æ®é•¿åº¦
+						Radio_Period_Send(WithCmd,WithWin,SendNoWait);//é…ç½®é¢‘é“ä¸‹å‘å‘½ä»¤
+						Work_Mode = Msg_Deal;//æ¶ˆæ¯å¤„ç†
+//						debug_printf("\n\rä¸‹å‘æ¶ˆæ¯é€šçŸ¥å‘½ä»¤");
 					}
 					else
 					{
-//						debug_printf("\n\rÃ»ÓĞÏûÏ¢Òª·¢ËÍ");
+//						debug_printf("\n\ræ²¡æœ‰æ¶ˆæ¯è¦å‘é€");
 					}
-					//Ê±¼äÉèÖÃ
+					//æ—¶é—´è®¾ç½®
 					if(1 == Need_Time_Set)
 					{
 						/********************************************************************
-						Ê±¼äÉèÖÃ»úÖÆ£ºÆ½Ì¨Ã¿ÌìÏÂ·¢Ò»´ÎÊ±¼äÉèÖÃ£¬µ±Ê±¼äÏÂ·¢³É¹¦ºó£¬¸Ã±êÖ¾Î»ÖÃÎ»£¬
-						µ±±êÇ©Ğ¯´ø½ÓÊÕ´°¿Ú£¬²¢ÇÒÊ±¼äÎ´¸üĞÂ¹ı£¬ÔòÍ¨¹ıÉäÆµÏÂ·¢Ê±¼äÉèÖÃ,Ò»¸öĞ¡Ê±¹ıºó£¬Í£Ö¹Ê±¼ä¸üĞÂ¹¦ÄÜ
+						æ—¶é—´è®¾ç½®æœºåˆ¶ï¼šå¹³å°æ¯å¤©ä¸‹å‘ä¸€æ¬¡æ—¶é—´è®¾ç½®ï¼Œå½“æ—¶é—´ä¸‹å‘æˆåŠŸåï¼Œè¯¥æ ‡å¿—ä½ç½®ä½ï¼Œ
+						å½“æ ‡ç­¾æºå¸¦æ¥æ”¶çª—å£ï¼Œå¹¶ä¸”æ—¶é—´æœªæ›´æ–°è¿‡ï¼Œåˆ™é€šè¿‡å°„é¢‘ä¸‹å‘æ—¶é—´è®¾ç½®,ä¸€ä¸ªå°æ—¶è¿‡åï¼Œåœæ­¢æ—¶é—´æ›´æ–°åŠŸèƒ½
 						*******************************************************************/
 						if( ((packet[TAG_STATE_IDX]&TAG_TIMEUPDATE_Msk)>>TAG_TIMEUPDATE_Pos) == Time_Update )
 						{
 							Radio_Time_Set(cmd_packet.packet,packet);
-							cmd_packet.length = cmd_packet.packet[RADIO_LENGTH_IDX];//ÉäÆµÊı¾İ³¤¶È
-							Radio_Period_Send(WithCmd,WithWin,SendNoWait);//ÅäÖÃÆµµÀÏÂ·¢ÃüÁî
+							cmd_packet.length = cmd_packet.packet[RADIO_LENGTH_IDX];//å°„é¢‘æ•°æ®é•¿åº¦
+							Radio_Period_Send(WithCmd,WithWin,SendNoWait);//é…ç½®é¢‘é“ä¸‹å‘å‘½ä»¤
 							Work_Mode = Time_Set;
 						}
 					}
 				}
 			}
-			else if( File_Deal == Work_Mode)//ÎÄ¼ş´¦Àí
+			else if( File_Deal == Work_Mode)//æ–‡ä»¶å¤„ç†
 			{
-				if(0 == ID_CMP(&packet[TAG_ID_IDX],&cmd_packet.packet[TAG_ID_IDX]))//Ä¿±êID
+				if(0 == ID_CMP(&packet[TAG_ID_IDX],&cmd_packet.packet[TAG_ID_IDX]))//ç›®æ ‡ID
 				{
-					if( ((packet[TAG_STATE_IDX]&TAG_WIHTWIN_Msk)>>TAG_WITHWIN_Pos) == WithWin )//Ä¿±êĞ¯´ø½ÓÊÕ´°
+					if( ((packet[TAG_STATE_IDX]&TAG_WIHTWIN_Msk)>>TAG_WITHWIN_Pos) == WithWin )//ç›®æ ‡æºå¸¦æ¥æ”¶çª—
 					{
-						Radio_Period_Send(WithCmd,WithWin,SendNoWait);//ÅäÖÃÆµµÀÏÂ·¢ÃüÁî
+						Radio_Period_Send(WithCmd,WithWin,SendNoWait);//é…ç½®é¢‘é“ä¸‹å‘å‘½ä»¤
 					}
 				}	
 			}
-			else if(List_Tag == Work_Mode)//ÁĞ³ö±êÇ©
+			else if(List_Tag == Work_Mode)//åˆ—å‡ºæ ‡ç­¾
 			{
-				if(packet[TAG_ID_IDX]!=READER_ID_MBYTE)//±êÇ©ĞÅÏ¢ÊÕ¼¯
+				if(packet[TAG_ID_IDX]!=READER_ID_MBYTE)//æ ‡ç­¾ä¿¡æ¯æ”¶é›†
 				{
-					tag_record(packet);//±êÇ©ÊÕ¼¯
+		
+					if(NRF_RADIO->RSSISAMPLE < Filter_Radio.RSSI_Filter_Value )
+					{
+						if(Filter_Radio.LP_Filter_En)
+						{
+							if(packet[TAG_STATE_IDX]&TAG_LOWPWR_Msk)//ä½ç”µè¿‡æ»¤
+							{
+								tag_record(packet);//æ ‡ç­¾æ”¶é›†
+							}
+						}
+						else
+						{
+							tag_record(packet);//æ ‡ç­¾æ”¶é›†
+						}
+					}
+				}
+			}
+			else if(List_Reader == Work_Mode)//åˆ—å‡ºè¯»å†™å™¨
+			{
+				if(packet[TAG_ID_IDX]==READER_ID_MBYTE)//è¯»å†™å™¨ä¿¡æ¯æ”¶é›†
+				{
+					if(NRF_RADIO->RSSISAMPLE < Filter_Radio.RSSI_Filter_Value )
+					{
+						if(Filter_Radio.LP_Filter_En)
+						{
+							if(packet[TAG_STATE_IDX]&TAG_LOWPWR_Msk)//ä½ç”µè¿‡æ»¤
+							{
+								reader_record(packet);//è¯»å†™å™¨æ”¶é›†
+							}
+						}
+						else
+						{
+							reader_record(packet);//è¯»å†™å™¨æ”¶é›†
+						}
+					}
+				}
+			}	
+			else if(Auto_Reoprt == Work_Mode)//è‡ªåŠ¨ä¸ŠæŠ¥
+			{
+				if(NRF_RADIO->RSSISAMPLE < Filter_Radio.RSSI_Filter_Value )
+				{
+					if(Filter_Radio.LP_Filter_En)
+					{
+						if(packet[TAG_STATE_IDX]&TAG_LOWPWR_Msk)//ä½ç”µè¿‡æ»¤
+						{
+							tag_record(packet);//æ ‡ç­¾æ”¶é›†
+						}
+					}
+					else
+					{
+						tag_record(packet);//æ ‡ç­¾æ”¶é›†
+					}
 				}
 			}
 		}
 		else if( RADIO_RUN_CONFIG_CHANNEL == radio_run_channel)
 		{
-			//ÉäÆµÉèÖÃ×ÔÉí²ÎÊı
-			if((packet[RADIO_S0_IDX]&RADIO_S0_DIR_Msk) == RADIO_S0_DIR_DOWN) //ÏÂĞĞ
+			//å°„é¢‘è®¾ç½®è‡ªèº«å‚æ•°
+			if((packet[RADIO_S0_IDX]&RADIO_S0_DIR_Msk) == RADIO_S0_DIR_DOWN) //ä¸‹è¡Œ
 			{
 				radio_rcvok = 1;
 			}
-			//ÉäÆµÉèÖÃÆäËûÉè±¸
-			if( File_Deal == Work_Mode)//ÎÄ¼ş´¦Àí
+			//å°„é¢‘è®¾ç½®å…¶ä»–è®¾å¤‡
+			if( File_Deal == Work_Mode)//æ–‡ä»¶å¤„ç†
 			{
-				if(0 == ID_CMP(&packet[TAG_ID_IDX],&cmd_packet.packet[TAG_ID_IDX]))//Ä¿±êID
+				if(0 == ID_CMP(&packet[TAG_ID_IDX],&cmd_packet.packet[TAG_ID_IDX]))//ç›®æ ‡ID
 				{
-					//ÃüÁî½ÓÊÕÍê³É£¬´®¿Ú»Ø¸´
+					//å‘½ä»¤æ¥æ”¶å®Œæˆï¼Œä¸²å£å›å¤
 					if(packet[CMD_IDX] == FILE_CMD_READ || packet[CMD_IDX] == FILE_CMD_WRITE)
 					{
 						my_memcpy(cmd_packet.packet,packet,packet[RADIO_LENGTH_IDX]+RADIO_HEAD_LENGTH);
@@ -502,28 +606,28 @@ void Radio_RX_Deal(void)
 					}
 				}
 			}
-			else if( Msg_Deal == Work_Mode )//ÏûÏ¢´¦Àí
+			else if( Msg_Deal == Work_Mode )//æ¶ˆæ¯å¤„ç†
 			{
-				//IDÆ¥ÅäÊ±£¬²ÅÔÊĞíÍ¨ĞÅ
+				//IDåŒ¹é…æ—¶ï¼Œæ‰å…è®¸é€šä¿¡
 				if(0 == memcmp(&packet[TAG_ID_IDX],Msg_Packet.MSG_PUSH_TID,RADIO_ID_LENGTH))
 				{
 					switch(MSG_PUSH_State)
 					{
 						case MSG_WAIT:
 							state = packet[CMD_IDX+1] << 8| packet[CMD_IDX+2];
-							if(MESSAGE_CMD == packet[CMD_IDX]&& MSG_START_END_VALUE == state)//ÏûÏ¢ÃüÁî¼°±êÇ©ÃüÁî»Ø¸´ÕıÈ·
+							if(MESSAGE_CMD == packet[CMD_IDX]&& MSG_START_END_VALUE == state)//æ¶ˆæ¯å‘½ä»¤åŠæ ‡ç­¾å‘½ä»¤å›å¤æ­£ç¡®
 							{
 								if(Msg_Packet.PKT_PUSH_NUM)
 								{
-									Radio_MSG_Push(packet);//ÏÂ·¢ÏûÏ¢°ü
-									Radio_Period_Send(WithCmd,WithWin,SendNoWait);//ÅäÖÃÆµµÀÏÂ·¢ÃüÁî
-									Msg_Packet.MSG_RE_PUSH = 0;//ÖØ·¢´ÎÊıÇå0
-//									debug_printf("\n\r ÏÂ·¢packt%d",Msg_Packet.PKT_PUSH_SEQ);	
+									Radio_MSG_Push(packet);//ä¸‹å‘æ¶ˆæ¯åŒ…
+									Radio_Period_Send(WithCmd,WithWin,SendNoWait);//é…ç½®é¢‘é“ä¸‹å‘å‘½ä»¤
+									Msg_Packet.MSG_RE_PUSH = 0;//é‡å‘æ¬¡æ•°æ¸…0
+//									debug_printf("\n\r ä¸‹å‘packt%d",Msg_Packet.PKT_PUSH_SEQ);	
 								}
 							}
 							else
 							{
-//								debug_printf("\n\r MSG_WAITÃüÁî»Ø¸´´íÎó");
+//								debug_printf("\n\r MSG_WAITå‘½ä»¤å›å¤é”™è¯¯");
 							}
 							break;
 						case MSG_Packet0:			
@@ -531,46 +635,46 @@ void Radio_RX_Deal(void)
 						case MSG_Packet2:
 						case MSG_Packet3:
 							state = packet[CMD_IDX+1] << 8| packet[CMD_IDX+2];
-							//»Ø¸´µÄ°üÍ· == ÏÂ·¢µÄ°üÍ·
+							//å›å¤çš„åŒ…å¤´ == ä¸‹å‘çš„åŒ…å¤´
 							if(packet[MSG_HEAD_IDX] == Msg_Packet.MSG_PUSH_HEAD)
 							{
-								//ÃüÁîÖ´ĞĞ³É¹¦
+								//å‘½ä»¤æ‰§è¡ŒæˆåŠŸ
 								if(packet[MSG_HEAD_IDX+1] == MSG_SUCCESS)
 								{
-									Msg_Packet.PKT_PUSH_NUM--;//·¢ËÍ³É¹¦ÔÙ¼õÒ»
-									Msg_Packet.PKT_PUSH_SEQ++;//·¢ËÍ³É¹¦ÔÙ¼Ó1
-									if(Msg_Packet.PKT_PUSH_NUM > 0)//»¹ÓĞÏûÏ¢ĞèÒª·¢ËÍ
+									Msg_Packet.PKT_PUSH_NUM--;//å‘é€æˆåŠŸå†å‡ä¸€
+									Msg_Packet.PKT_PUSH_SEQ++;//å‘é€æˆåŠŸå†åŠ 1
+									if(Msg_Packet.PKT_PUSH_NUM > 0)//è¿˜æœ‰æ¶ˆæ¯éœ€è¦å‘é€
 									{
-										Radio_MSG_Push(packet);//ÏÂ·¢ÏûÏ¢°ü
-										Radio_Period_Send(WithCmd,WithWin,SendNoWait);//ÅäÖÃÆµµÀÏÂ·¢ÃüÁî								
-										Msg_Packet.MSG_RE_PUSH = 0;//ÖØ·¢´ÎÊıÇå0	
-//										debug_printf("\n\r ÏÂ·¢packt%d",Msg_Packet.PKT_PUSH_SEQ);									
+										Radio_MSG_Push(packet);//ä¸‹å‘æ¶ˆæ¯åŒ…
+										Radio_Period_Send(WithCmd,WithWin,SendNoWait);//é…ç½®é¢‘é“ä¸‹å‘å‘½ä»¤								
+										Msg_Packet.MSG_RE_PUSH = 0;//é‡å‘æ¬¡æ•°æ¸…0	
+//										debug_printf("\n\r ä¸‹å‘packt%d",Msg_Packet.PKT_PUSH_SEQ);									
 									}
 								}
 
 							}
-							//×îºóÒ»°ü
-							else if(MESSAGE_CMD == packet[CMD_IDX]&& MSG_START_END_VALUE == state)//·¢ËÍÍê³É
+							//æœ€åä¸€åŒ…
+							else if(MESSAGE_CMD == packet[CMD_IDX]&& MSG_START_END_VALUE == state)//å‘é€å®Œæˆ
 							{
 								Work_Mode = Idle;
 								MSG_PUSH_State = MSG_IDLE;	
-//								debug_printf("\n\r ÏûÏ¢ÏÂ·¢³É¹¦£¬»Øµ½¿ÕÏĞ×´Ì¬");	
+//								debug_printf("\n\r æ¶ˆæ¯ä¸‹å‘æˆåŠŸï¼Œå›åˆ°ç©ºé—²çŠ¶æ€");	
 							}
-							//ÖØ·¢
+							//é‡å‘
 							else 
 							{
-								//³¬¹ıÖØ·¢´ÎÊı
+								//è¶…è¿‡é‡å‘æ¬¡æ•°
 								if(Msg_Packet.MSG_RE_PUSH > MSG_RPUSH_TIMES)
 								{
 									Work_Mode = Idle;
 									MSG_PUSH_State = MSG_IDLE;
-//									debug_printf("\n\r ÏûÏ¢ÏÂ·¢³É¹¦£¬»Øµ½¿ÕÏĞ×´Ì¬");	
+//									debug_printf("\n\r æ¶ˆæ¯ä¸‹å‘æˆåŠŸï¼Œå›åˆ°ç©ºé—²çŠ¶æ€");	
 								}
 								else
 								{
-									Radio_Period_Send(WithCmd,WithWin,SendNoWait);//ÅäÖÃÆµµÀÏÂ·¢ÃüÁî
-									MSG_PUSH_State = MSG_PUSH_State - 1;//»Øµ½ÉÏÒ»¸ö×´Ì¬
-//									debug_printf("\n\r ÏûÏ¢ÖØ·¢");								
+									Radio_Period_Send(WithCmd,WithWin,SendNoWait);//é…ç½®é¢‘é“ä¸‹å‘å‘½ä»¤
+									MSG_PUSH_State = MSG_PUSH_State - 1;//å›åˆ°ä¸Šä¸€ä¸ªçŠ¶æ€
+//									debug_printf("\n\r æ¶ˆæ¯é‡å‘");								
 								}
 
 							}
@@ -583,55 +687,55 @@ void Radio_RX_Deal(void)
 	}
 }
 /************************************************* 
-@Description:RADIOÖĞ¶Ï´¦Àí³ÌĞò-·¢ËÍ
-@Input:ÎŞ
-@Output:ÎŞ
-@Return:ÎŞ
+@Description:RADIOä¸­æ–­å¤„ç†ç¨‹åº-å‘é€
+@Input:æ— 
+@Output:æ— 
+@Return:æ— 
 *************************************************/
 void Radio_TX_Deal(void)
 {
-	if(RADIO_RUN_CONFIG_CHANNEL == radio_run_channel)//ÅäÖÃÆµµÀ
+	if(RADIO_RUN_CONFIG_CHANNEL == radio_run_channel)//é…ç½®é¢‘é“
 	{
-		if(File_Deal == Work_Mode)//ÎÄ¼ş·¢ËÍ´¦Àí
+		if(File_Deal == Work_Mode)//æ–‡ä»¶å‘é€å¤„ç†
 		{
-			radio_select(CONFIG_CHANNEL,RADIO_RX);//ÇĞ»»µ½ÅäÖÃÆµµÀ½ÓÊÕ
+			radio_select(CONFIG_CHANNEL,RADIO_RX);//åˆ‡æ¢åˆ°é…ç½®é¢‘é“æ¥æ”¶
 		}
 		else if(Msg_Deal == Work_Mode)
 		{
 			switch(MSG_PUSH_State)
 			{
 				case MSG_IDLE:
-					MSG_PUSH_State = MSG_WAIT;//ÏûÏ¢¿ªÊ¼°ü·¢ËÍ³É¹¦
-//					debug_printf("\n\r MSG_WAIT µÈ´ı»Ø¸´½ÓÊÕ×´Ì¬");
+					MSG_PUSH_State = MSG_WAIT;//æ¶ˆæ¯å¼€å§‹åŒ…å‘é€æˆåŠŸ
+//					debug_printf("\n\r MSG_WAIT ç­‰å¾…å›å¤æ¥æ”¶çŠ¶æ€");
 					break;
 				case MSG_WAIT:
-					MSG_PUSH_State = MSG_Packet0;//°ü0·¢ËÍ³É¹¦
+					MSG_PUSH_State = MSG_Packet0;//åŒ…0å‘é€æˆåŠŸ
 					Msg_Packet.MSG_RE_PUSH++;
-//					debug_printf("\n\r MSG_Packet0 µÈ´ı»Ø¸´½ÓÊÕ×´Ì¬");
+//					debug_printf("\n\r MSG_Packet0 ç­‰å¾…å›å¤æ¥æ”¶çŠ¶æ€");
 					break;
 				case MSG_Packet0:
-					MSG_PUSH_State = MSG_Packet1;//°ü1·¢ËÍ³É¹¦
+					MSG_PUSH_State = MSG_Packet1;//åŒ…1å‘é€æˆåŠŸ
 					Msg_Packet.MSG_RE_PUSH++;
-//					debug_printf("\n\r MSG_Packet1 µÈ´ı»Ø¸´½ÓÊÕ×´Ì¬");
+//					debug_printf("\n\r MSG_Packet1 ç­‰å¾…å›å¤æ¥æ”¶çŠ¶æ€");
 					break;	
 				case MSG_Packet1:
-					MSG_PUSH_State = MSG_Packet2;//°ü2·¢ËÍ³É¹¦
+					MSG_PUSH_State = MSG_Packet2;//åŒ…2å‘é€æˆåŠŸ
 					Msg_Packet.MSG_RE_PUSH++;
-//					debug_printf("\n\r MSG_Packet2 µÈ´ı»Ø¸´½ÓÊÕ×´Ì¬");
+//					debug_printf("\n\r MSG_Packet2 ç­‰å¾…å›å¤æ¥æ”¶çŠ¶æ€");
 					break;	
 				case MSG_Packet2:
-					MSG_PUSH_State = MSG_Packet3;//°ü3·¢ËÍ³É¹¦
+					MSG_PUSH_State = MSG_Packet3;//åŒ…3å‘é€æˆåŠŸ
 					Msg_Packet.MSG_RE_PUSH++;
-//					debug_printf("\n\r MSG_Packet3 µÈ´ı»Ø¸´½ÓÊÕ×´Ì¬");
+//					debug_printf("\n\r MSG_Packet3 ç­‰å¾…å›å¤æ¥æ”¶çŠ¶æ€");
 					break;			
 				case MSG_Packet3:
-					MSG_PUSH_State = MSG_Packet3;//°ü3·¢ËÍ³É¹¦
+					MSG_PUSH_State = MSG_Packet3;//åŒ…3å‘é€æˆåŠŸ
 					Msg_Packet.MSG_RE_PUSH++;
-//					debug_printf("\n\r  µÈ´ı»Ø¸´ÏûÏ¢½áÊø½ÓÊÕ×´Ì¬");
+//					debug_printf("\n\r  ç­‰å¾…å›å¤æ¶ˆæ¯ç»“æŸæ¥æ”¶çŠ¶æ€");
 					break;				
 			}
-			radio_select(CONFIG_CHANNEL,RADIO_RX);//ÇĞ»»µ½ÅäÖÃÆµµÀ½ÓÊÕ
-			//³¬¹ıÖØ·¢´ÎÊı
+			radio_select(CONFIG_CHANNEL,RADIO_RX);//åˆ‡æ¢åˆ°é…ç½®é¢‘é“æ¥æ”¶
+			//è¶…è¿‡é‡å‘æ¬¡æ•°
 			if(Msg_Packet.MSG_RE_PUSH > MSG_RPUSH_TIMES)
 			{
 				Work_Mode = Idle;
@@ -641,7 +745,7 @@ void Radio_TX_Deal(void)
 		}
 		else if(Time_Set ==  Work_Mode)
 		{
-			radio_select(DATA_CHANNEL,RADIO_RX);//ÇĞ»»µ½ÅäÖÃÆµµÀ½ÓÊÕ
+			radio_select(DATA_CHANNEL,RADIO_RX);//åˆ‡æ¢åˆ°é…ç½®é¢‘é“æ¥æ”¶
 			Work_Mode = Idle;
 		}
 		
@@ -652,10 +756,10 @@ void Radio_TX_Deal(void)
 	}
 }
 /************************************************* 
-@Description:RADIOÖĞ¶Ï´¦Àí³ÌĞò
-@Input:ÎŞ
-@Output:ÎŞ
-@Return:ÎŞ
+@Description:RADIOä¸­æ–­å¤„ç†ç¨‹åº
+@Input:æ— 
+@Output:æ— 
+@Return:æ— 
 *************************************************/  
 uint8_t rx_cnt;
 void RADIO_IRQHandler(void)
@@ -663,23 +767,23 @@ void RADIO_IRQHandler(void)
 	if(NRF_RADIO->EVENTS_END)//EVENTS_END
 	{
 		NRF_RADIO->EVENTS_END = 0;
-		if(NRF_RADIO->STATE == RADIO_STATE_STATE_RxIdle)//ÉäÆµ½ÓÊÕ
+		if(NRF_RADIO->STATE == RADIO_STATE_STATE_RxIdle)//å°„é¢‘æ¥æ”¶
 		{	
-			if(NRF_RADIO->CRCSTATUS == RADIO_CRCSTATUS_CRCSTATUS_CRCOk)//CRCĞ£Ñé
+			if(NRF_RADIO->CRCSTATUS == RADIO_CRCSTATUS_CRCSTATUS_CRCOk)//CRCæ ¡éªŒ
 			{
-				Radio_RX_Deal();//ÉäÆµ´¦Àí
+				Radio_RX_Deal();//å°„é¢‘å¤„ç†
 				rx_cnt++;
 			}
 			
 		}
-		else if(NRF_RADIO->STATE == RADIO_STATE_STATE_TxIdle)//ÉäÆµ·¢ËÍ
+		else if(NRF_RADIO->STATE == RADIO_STATE_STATE_TxIdle)//å°„é¢‘å‘é€
 		{
 			Radio_TX_Deal();
-			radio_sndok = 1;//ÉäÆµ·¢ËÍ³É¹¦
+			radio_sndok = 1;//å°„é¢‘å‘é€æˆåŠŸ
 		}
 		if(RADIO_STATUS_RX == radio_status)
 		{
-			NRF_RADIO->TASKS_START = 1U;//ÖØĞÂÆô¶¯ÉäÆµ
+			NRF_RADIO->TASKS_START = 1U;//é‡æ–°å¯åŠ¨å°„é¢‘
 		}
 	}
 	

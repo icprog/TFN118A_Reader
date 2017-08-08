@@ -2,9 +2,9 @@
 #include "radio_config.h"
 #include "app_reader.h"
 #include "app_uart.h"
-extern uint8_t rtc_flag;//¶¨Ê±£¬ÉäÆµ·¢ËÍ
+extern uint8_t rtc_flag;//å®šæ—¶ï¼Œå°„é¢‘å‘é€
 
-uint8_t tx_cnt;//²âÊÔ±êÖ¾Î»
+uint8_t tx_cnt;//æµ‹è¯•æ ‡å¿—ä½
 
 int main(void)
 {
@@ -17,7 +17,7 @@ int main(void)
 //		{
 //			tx_cnt++;
 //			rtc_flag = 0;
-//			Raio_Deal();//ÉäÆµ¹¦ÄÜ		
+//			Raio_Deal();//å°„é¢‘åŠŸèƒ½		
 //		}
 		__WFI();
 	}

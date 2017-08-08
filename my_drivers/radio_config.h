@@ -19,14 +19,14 @@
 #define PACKET_PAYLOAD_MAXSIZE           (100)  //!< Packet payload maximum size in bytes
 typedef struct
 {
-	uint8_t length;//射频数据长度
-	uint8_t packet[PACKET_PAYLOAD_MAXSIZE];//射频
+	uint8_t length;//灏勯鏁版嵁闀垮害
+	uint8_t packet[PACKET_PAYLOAD_MAXSIZE];//灏勯
 	uint8_t flag;
 }Payload_Typedef;
 
 
 #define 	RADIO_OVER_TIME							100000
-//2.4G部分
+//2.4G閮ㄥ垎
 typedef enum
 {
     RADIO_STATUS_IDLE = 1,
