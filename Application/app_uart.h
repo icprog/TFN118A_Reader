@@ -95,6 +95,14 @@ typedef enum
 
 #define U_READER_ACK_LEN 						0X000C//读写器ID命令返回长度
 
+#define U_CMD_DEVICE_TEST                       0XF3    //整机测试
+#define U_CMD_DEVICE_TEST_LEN 					0X000A
+typedef enum
+{
+	U_DEVICE_TEST_SUCCESS = 0X0000,
+	U_DEVICE_TEST_ERR = 0X0901
+}U_DEVICE_TEST_State_Typedef;
+
 //列出标签或者读写器
 typedef struct
 {

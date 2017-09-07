@@ -159,6 +159,31 @@ void Uart_Deal(void)
 					}
 				}
 				break;
+				case U_CMD_DEVICE_TEST://整机测试
+				{
+					my_memset(cmd_packet.packet,0,PACKET_PAYLOAD_MAXSIZE);
+					cmd_packet.packet[RADIO_S0_IDX] = RADIO_S0_DIR_DOWN;//S0下行
+					my_memcpy(&cmd_packet.packet[TAG_ID_IDX],&U_Master.rx_buf[U_DATA_IDX],RADIO_ID_LENGTH);//2~5目标ID
+					my_memcpy(&cmd_packet.packet[READER_ID_IDX],&DeviceID,RADIO_RID_LENGTH);//6~9读写器ID
+					cmd_packet.packet[CMD_IDX] = DEVICE_TEST_CMD;						
+					cmd_packet.packet[CMD_IDX+1] = 0x00;//保留
+					U_DATA_LEN = 1;
+//						U_DATA_LEN = U_DATA_LEN - RADIO_ID_LENGTH;//下发的命令长度
+//						my_memcpy(&cmd_packet.packet[CMD_IDX+1],&U_Master.rx_buf[U_FileData_IDX],U_DATA_LEN);//数据内容
+					cmd_packet.length = CMD_FIX_LENGTH + U_DATA_LEN ;
+					cmd_packet.packet[RADIO_LENGTH_IDX] = cmd_packet.length;
+					cmd_packet.packet[cmd_packet.length+RADIO_HEAD_LENGTH-1]=Get_Xor(cmd_packet.packet,cmd_packet.length+1);
+					
+					Time_type.TimeOut_Cycle = 0x09;//超时时间
+					if(Time_type.TimeOut_Cycle)
+					{
+						Time_type.TimeOut_Cycle = Time_type.TimeOut_Cycle*rtc_cont;
+						Time_type.Radio_Time_En = 1;//开始计数
+						Time_type.Radio_Time_Cnt = 0;//计数值清0
+					}
+					Work_Mode = Device_Test;//设备测试
+				}
+				break;
 				case U_CMD_MSG_PUSH:
 				{
 					U_DATA_LEN = U_Master.rx_buf[U_DATA_IDX];//消息长度
@@ -194,6 +219,7 @@ void Uart_Deal(void)
 					U_Master.tx_buf[crc_idx+1] = crc;//crc
 					U_Master.len = U_Master.len + U_FIX_LEN;//帧头2+长度2+校验2+数据长度
 					UART_Send(U_Master.tx_buf,U_Master.len);
+					Work_Mode = Idle;
 //					debug_printf("\n\r成功更新消息");
 				}
 				break;
@@ -240,6 +266,7 @@ void Uart_Deal(void)
 					U_Master.tx_buf[crc_idx+1] = crc;//crc
 					U_Master.len = U_Master.len + U_FIX_LEN;//帧头2+长度2+校验2+数据长度
 					UART_Send(U_Master.tx_buf,U_Master.len);
+					Work_Mode = Idle;
 //					debug_printf("\n\r更新时间");
 				}
 				break;
@@ -346,6 +373,7 @@ void Uart_Deal(void)
 					
 				}
 				break;
+
 			}
 		}
 	}

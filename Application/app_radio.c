@@ -468,6 +468,30 @@ void Radio_Time_Set(uint8_t* tPacket,uint8_t* psrc)
 }
 
 /************************************************* 
+@Description:射频时间设置
+@Input:无
+@Output:无
+@Return:无
+*************************************************/ 
+void Alarm_Clear(void)
+{
+	if( ((packet[TAG_STATE_IDX]&TAG_KEY_Msk)>>TAG_KEY_Pos) == 1)
+	{
+		uint8_t len;
+		cmd_packet.packet[RADIO_S0_IDX] = RADIO_S0_DIR_DOWN;//S0下行
+		my_memcpy(&cmd_packet.packet[TAG_ID_IDX],&packet[TAG_ID_IDX],RADIO_ID_LENGTH);//2~5目标ID
+		my_memcpy(&cmd_packet.packet[READER_ID_IDX],&DeviceID,RADIO_RID_LENGTH);//6~9读写器ID
+		cmd_packet.packet[CMD_IDX] = ALARM_CLEAR_CMD;//命令
+		cmd_packet.packet[CMD_IDX+1] = 0x00;//命令参数
+		len = CMD_FIX_LENGTH + 1;
+		cmd_packet.packet[RADIO_LENGTH_IDX] = len;
+		cmd_packet.packet[len+RADIO_HEAD_LENGTH-1]=Get_Xor(cmd_packet.packet,(len+1));
+		cmd_packet.length = cmd_packet.packet[RADIO_LENGTH_IDX];//射频数据长度
+		Radio_Period_Send(WithCmd,WithWin,SendNoWait);//配置频道下发命令
+	}
+
+}
+/************************************************* 
 @Description:RADIO中断处理程序
 @Input:无
 @Output:无
@@ -487,7 +511,7 @@ void Radio_RX_Deal(void)
 				{
 					//消息处理
 //					debug_printf("\n\r携带接收窗口");
-					if(TRUE == Message_Get(packet[TAG_SDATA_IDX]))//并且有新信息发送
+					if(TRUE == Reader_Message_Get(packet[TAG_SDATA_IDX]))//并且有新信息发送
 					{
 						memcpy(Msg_Packet.MSG_PUSH_TID,packet+TAG_ID_IDX,RADIO_RID_LENGTH);
 						Radio_MSG_Start(cmd_packet.packet,packet);
@@ -496,25 +520,30 @@ void Radio_RX_Deal(void)
 						Work_Mode = Msg_Deal;//消息处理
 //						debug_printf("\n\r下发消息通知命令");
 					}
-					else
-					{
-//						debug_printf("\n\r没有消息要发送");
-					}
+//					else
+//					{
+////						debug_printf("\n\r没有消息要发送");
+//					}
 					//时间设置
-					if(1 == Need_Time_Set)
+					else if( (1 == Need_Time_Set)&& (((packet[TAG_STATE_IDX]&TAG_TIMEUPDATE_Msk)>>TAG_TIMEUPDATE_Pos) == Time_Update))
 					{
 						/********************************************************************
 						时间设置机制：平台每天下发一次时间设置，当时间下发成功后，该标志位置位，
 						当标签携带接收窗口，并且时间未更新过，则通过射频下发时间设置,一个小时过后，停止时间更新功能
 						*******************************************************************/
-						if( ((packet[TAG_STATE_IDX]&TAG_TIMEUPDATE_Msk)>>TAG_TIMEUPDATE_Pos) == Time_Update )
-						{
-							Radio_Time_Set(cmd_packet.packet,packet);
-							cmd_packet.length = cmd_packet.packet[RADIO_LENGTH_IDX];//射频数据长度
-							Radio_Period_Send(WithCmd,WithWin,SendNoWait);//配置频道下发命令
-							Work_Mode = Time_Set;
-						}
+						Radio_Time_Set(cmd_packet.packet,packet);
+						cmd_packet.length = cmd_packet.packet[RADIO_LENGTH_IDX];//射频数据长度
+						Radio_Period_Send(WithCmd,WithWin,SendNoWait);//配置频道下发命令
+						Work_Mode = Time_Set;
+						
 					}
+//					else if( ((packet[TAG_STATE_IDX]&TAG_KEY_Msk)>>TAG_KEY_Pos) == 1)
+//					{
+//						Alarm_Clear(cmd_packet.packet,packet);
+//						cmd_packet.length = cmd_packet.packet[RADIO_LENGTH_IDX];//射频数据长度
+//						Radio_Period_Send(WithCmd,WithWin,SendNoWait);//配置频道下发命令
+//						Work_Mode = Alarm_Clr;
+//					}
 				}
 			}
 			else if( File_Deal == Work_Mode)//文件处理
@@ -524,6 +553,17 @@ void Radio_RX_Deal(void)
 					if( ((packet[TAG_STATE_IDX]&TAG_WIHTWIN_Msk)>>TAG_WITHWIN_Pos) == WithWin )//目标携带接收窗
 					{
 						Radio_Period_Send(WithCmd,WithWin,SendNoWait);//配置频道下发命令
+					}
+				}	
+			}
+			else if( Device_Test == Work_Mode)//整机测试
+			{
+				if(0 == ID_CMP(&packet[TAG_ID_IDX],&cmd_packet.packet[TAG_ID_IDX]))//目标ID
+				{
+					if( ((packet[TAG_STATE_IDX]&TAG_WIHTWIN_Msk)>>TAG_WITHWIN_Pos) == WithWin )//目标携带接收窗
+					{
+						Radio_Period_Send(WithCmd,WithWin,SendWait);//配置频道下发命令
+						U_Master.tx_en = 1;
 					}
 				}	
 			}
@@ -559,6 +599,7 @@ void Radio_RX_Deal(void)
 							if(packet[TAG_STATE_IDX]&TAG_LOWPWR_Msk)//低电过滤
 							{
 								reader_record(packet);//读写器收集
+								
 							}
 						}
 						else
@@ -577,11 +618,13 @@ void Radio_RX_Deal(void)
 						if(packet[TAG_STATE_IDX]&TAG_LOWPWR_Msk)//低电过滤
 						{
 							tag_record(packet);//标签收集
+							Alarm_Clear();
 						}
 					}
 					else
 					{
 						tag_record(packet);//标签收集
+						Alarm_Clear();
 					}
 				}
 			}
@@ -748,7 +791,10 @@ void Radio_TX_Deal(void)
 			radio_select(DATA_CHANNEL,RADIO_RX);//切换到配置频道接收
 			Work_Mode = Idle;
 		}
-		
+		else if(Auto_Reoprt == Work_Mode)
+		{
+			radio_select(DATA_CHANNEL,RADIO_RX);//切换到配置频道接收
+		}
 	}
 	else if(RADIO_RUN_DATA_CHANNEL == radio_run_channel)
 	{

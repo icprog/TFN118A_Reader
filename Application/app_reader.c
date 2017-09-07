@@ -389,6 +389,61 @@ void app_process(void)
 				}
 			}
 			break;
+		case Device_Test:
+		{
+			if(Time_type.Radio_Time_Cnt > Time_type.TimeOut_Cycle)//超时
+			{
+				Time_type.Radio_Time_Cnt = 0;
+				Time_type.Radio_Time_En = 0;
+				U_Master.tx_buf[U_HEADER_IDX] = pkt_head1;
+				U_Master.tx_buf[U_HEADER_IDX+1] = pkt_head2;
+				info_len = U_STATE_LEN;//信息长度
+				U_Master.len = info_len + U_AfterLEN_FIX_LEN;//信息内容+串口协议长度后面的固定长度
+				U_Master.tx_buf[U_LEN_IDX] =  U_Master.len>>8;
+				U_Master.tx_buf[U_LEN_IDX+1] =  U_Master.len;
+				U_Master.tx_buf[U_PROTOCOL_IDX] = U_PROTOCOL_VER;//协议
+				my_memcpy(&U_Master.tx_buf[U_ID_IDX],DeviceID,RADIO_ID_LENGTH);//读写器ID
+				U_Master.tx_buf[U_TXGPS_IDX] = U_TXGPS_Value;//定位信息
+				U_Master.tx_buf[U_SEQ_IDX] = U_SEQ_Value;//流水号
+				U_Master.tx_buf[U_TXCMD_IDX] = U_Master.rx_buf[U_CMD_IDX];//命令字
+				U_Master.tx_buf[U_DATA_IDX] = (U_DEVICE_TEST_ERR>>8);//信息内容-状态
+				U_Master.tx_buf[U_DATA_IDX+1] = (uint8_t)U_DEVICE_TEST_ERR;//信息内容-状态
+				U_Master.len = ((U_Master.tx_buf[U_LEN_IDX]<<8)|U_Master.tx_buf[U_LEN_IDX+1]);//串口协议中数据长度，协议版本~信息内容
+				crc = crc16(&U_Master.tx_buf[U_LEN_IDX],(U_Master.len+U_LENTH_LEN));//长度~信息内容
+				crc_idx = U_HEAD_LEN + U_LENTH_LEN + U_Master.len; //帧头长度+长度长度+长度后面的长度
+				U_Master.tx_buf[crc_idx] = (crc>>8);
+				U_Master.tx_buf[crc_idx+1] = crc;//crc
+				U_Master.len = U_Master.len + U_FIX_LEN;//帧头2+长度2+校验2+数据长度
+				UART_Send(U_Master.tx_buf,U_Master.len);
+				Work_Mode = Idle;	
+			}
+			else
+			{
+				if(U_Master.tx_en)
+				{
+					U_Master.tx_en = 0;
+					U_Master.tx_buf[U_HEADER_IDX] = pkt_head1;
+					U_Master.tx_buf[U_HEADER_IDX+1] = pkt_head2;
+					U_Master.len = U_CMD_DEVICE_TEST_LEN;
+					U_Master.tx_buf[U_LEN_IDX] =  U_Master.len>>8;
+					U_Master.tx_buf[U_LEN_IDX+1] =  U_Master.len;
+					U_Master.tx_buf[U_PROTOCOL_IDX] = U_PROTOCOL_VER;//协议
+					my_memcpy(&U_Master.tx_buf[U_ID_IDX],DeviceID,RADIO_ID_LENGTH);//读写器ID
+					U_Master.tx_buf[U_TXGPS_IDX] = U_TXGPS_Value;//定位信息
+					U_Master.tx_buf[U_SEQ_IDX] = U_SEQ_Value;//流水号
+					U_Master.tx_buf[U_CMD_IDX] = U_CMD_DEVICE_TEST;//命令
+					U_Master.tx_buf[U_DATA_IDX] = (U_DEVICE_TEST_SUCCESS>>8);//信息内容-状态
+					U_Master.tx_buf[U_DATA_IDX+1] = (uint8_t)U_DEVICE_TEST_SUCCESS;//信息内容-状态					
+					crc = crc16(&U_Master.tx_buf[U_LEN_IDX],(U_Master.len+U_LENTH_LEN));//长度~信息内容
+					crc_idx = U_HEAD_LEN + U_LENTH_LEN + U_Master.len; //帧头长度+长度长度+长度后面的长度
+					U_Master.tx_buf[crc_idx] = (crc>>8);
+					U_Master.tx_buf[crc_idx+1] = crc;//crc
+					U_Master.len = U_Master.len + U_FIX_LEN;//帧头2+长度2+校验2+数据长度
+					UART_Send(U_Master.tx_buf,U_Master.len);
+					Work_Mode = Idle;
+				}
+			}
+		}
 		case Tag_Report:
 			break;
 	}

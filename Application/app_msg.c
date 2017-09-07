@@ -241,7 +241,7 @@ u16 Message_Deal(uint8_t *p_mpacket)
 @Output:
 @Return:1:获取成功，0：获取失败
 *************************************************/ 
-uint8_t Message_Get(uint8_t msg_head)
+uint8_t Reader_Message_Get(uint8_t msg_head)
 {
 	uint8_t Diff;//差值
 	uint8_t i,j;

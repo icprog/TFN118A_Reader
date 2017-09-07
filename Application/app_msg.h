@@ -61,7 +61,7 @@ void MSG_Addr_Init(void);
 void MSG_Erase_ALL(void);
 void MSG_Find_New(void);
 void MSG_Write(uint8_t idx,u8* buff);
-uint8_t Message_Get(uint8_t tag_msg_seq);
+uint8_t Reader_Message_Get(uint8_t tag_msg_seq);
 void Radio_MSG_Start(uint8_t *msg_buf,uint8_t* src);
 void Radio_MSG_Push(uint8_t* src);
 #endif

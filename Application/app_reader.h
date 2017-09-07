@@ -9,7 +9,9 @@ typedef enum
 	File_Deal,
 	Tag_Report,
 	Msg_Deal,
-	Time_Set
+	Time_Set,
+	Device_Test,
+	Alarm_Clr
 }Work_Mode_Typedef;
 
 extern void app_process(void);
