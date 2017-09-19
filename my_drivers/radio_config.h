@@ -14,25 +14,24 @@
 #include "nrf.h"
 #include "app_var.h"
 
-#define PACKET_BASE_ADDRESS_LENGTH       (4UL)  //!< Packet base address length field size in bytes
+#define PACKET_BASE_ADDRESS_LENGTH       (2UL)  //!< Packet base address length field size in bytes
 #define PACKET_STATIC_LENGTH             (0UL)  //!< Packet static length in bytes
-#define PACKET_PAYLOAD_MAXSIZE           (100)  //!< Packet payload maximum size in bytes
+#define PACKET_PAYLOAD_MAXSIZE           100  //!< Packet payload maximum size in bytes
 typedef struct
 {
-	uint8_t length;//射频数据长度
+	uint8_t length;//payload长度
 	uint8_t packet[PACKET_PAYLOAD_MAXSIZE];//射频
 	uint8_t flag;
 }Payload_Typedef;
 
 
 #define 	RADIO_OVER_TIME							100000
-//2.4G部分
+//2.4G状态
 typedef enum
 {
     RADIO_STATUS_IDLE = 1,
     RADIO_STATUS_RX,
     RADIO_STATUS_TX,
-
 }RADIO_Status;
 
 
@@ -47,4 +46,5 @@ void startRX(void);
 //void radio_tx_carrier(uint8_t txpower, uint8_t mode, uint8_t channel);
 void radio_tx_carrier( uint8_t mode, uint8_t channel);
 void radio_disable(void);
+uint8_t radio_tx_isbusy(void);
 #endif

@@ -214,6 +214,7 @@ void app_init(void)
 //	debug_printf("app_reader start");
 	Radio_Init();//射频初始化
 	TID_RECORD_Clear();//清空缓存
+	rtc0_init();
 	timer0_init(TIM0_TIME);//50ms定时
 	radio_select(DATA_CHANNEL,RADIO_RX);//进入接收状态
 	timer0_start();//开始计数

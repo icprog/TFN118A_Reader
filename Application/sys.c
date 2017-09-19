@@ -34,10 +34,10 @@ void *my_memcpy(void* dest,const void* src,u16 size)
 }
 
 /*
-Description:得到异或值
-Input:src:原数组，长度
-Output:
-Return:无
+@Description:得到异或值
+@Input:src:原数组，长度
+@Output:
+@Return:无
 */
 uint8_t Get_Xor(u8 *src,u16 size)
 {

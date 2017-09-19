@@ -20,9 +20,9 @@
 #define SHORTCUT_EN 0
 #define RSSI_EN 1
 /* These are set to zero as Shockburst packets don't have corresponding fields. */
-#define PACKET_S1_FIELD_SIZE             (0UL)  /**< Packet S1 field size in bits. */
-#define PACKET_S0_FIELD_SIZE             (1UL)  /**< Packet S0 field size in bits. */
-#define PACKET_LENGTH_FIELD_SIZE         (8UL)  /**< Packet length field size in bits. */
+#define PACKET_S1_FIELD_SIZE             (3UL)  /**< Packet S1 field size in bits. */
+#define PACKET_S0_FIELD_SIZE             (0UL)  /**< Packet S0 field size in bits. */
+#define PACKET_LENGTH_FIELD_SIZE         (6UL)  /**< Packet length field size in bits. */
 
 uint8_t packet[PACKET_PAYLOAD_MAXSIZE];
 uint8_t radio_status = RADIO_STATUS_IDLE;
@@ -63,7 +63,7 @@ void radio_configure()
 	NRF_RADIO->PREFIX1 = 0xC5C6C7C8UL;//Prefix byte of addresses 7 to 4
 	NRF_RADIO->BASE0   = RADIO_ADDRESS_L;//逻辑地址// Base address for prefix 0
     NRF_RADIO->BASE1   = 0x43434343UL;//逻辑地址设定 // Base address for prefix 1-7
-	//本射频协议使用通道0传输数据，即地址为0xE7E7E7E7E7
+	//本射频协议使用通道0传输数据，即地址为0xE1E3E7
     NRF_RADIO->TXADDRESS   = 0x00UL;//Set device address 0 to use when transmitting
     NRF_RADIO->RXADDRESSES = 0x01UL;//Enable device address 0 to use to select which addresses to receive
 
@@ -71,21 +71,28 @@ void radio_configure()
 	//设置S1长度
 	//设置S0长度
 	//设置LENGTH的长度
-	//设置这三个域的长度都为0
     NRF_RADIO->PCNF0 = (PACKET_S1_FIELD_SIZE     << RADIO_PCNF0_S1LEN_Pos) |
                        (PACKET_S0_FIELD_SIZE     << RADIO_PCNF0_S0LEN_Pos) |
                        (PACKET_LENGTH_FIELD_SIZE << RADIO_PCNF0_LFLEN_Pos); //lint !e845 "The right argument to operator '|' is certain to be 0"
 
     // Packet configuration
-	//不使能数据加噪
+	//不使能数据白化
 	//数据高位在先
 	//静态地址为4，意味着比LENGTH filed所定义的包长度多四
 	//PAYLOAD最大长度为32
+	#if WHITEEN
     NRF_RADIO->PCNF1 = (RADIO_PCNF1_WHITEEN_Enabled << RADIO_PCNF1_WHITEEN_Pos) |    
                        (RADIO_PCNF1_ENDIAN_Big       << RADIO_PCNF1_ENDIAN_Pos)  |
                        (PACKET_BASE_ADDRESS_LENGTH   << RADIO_PCNF1_BALEN_Pos)   |
                        (PACKET_STATIC_LENGTH         << RADIO_PCNF1_STATLEN_Pos) |
-                       (PACKET_PAYLOAD_MAXSIZE       << RADIO_PCNF1_MAXLEN_Pos); //lint !e845 "The right argument to operator '|' is certain to be 0"
+                       (PACKET_PAYLOAD_MAXSIZE       << RADIO_PCNF1_MAXLEN_Pos); 
+	#else
+	NRF_RADIO->PCNF1 = (RADIO_PCNF1_WHITEEN_Disabled << RADIO_PCNF1_WHITEEN_Pos) |    
+				   (RADIO_PCNF1_ENDIAN_Big       << RADIO_PCNF1_ENDIAN_Pos)  |
+				   (PACKET_BASE_ADDRESS_LENGTH   << RADIO_PCNF1_BALEN_Pos)   |
+				   (PACKET_STATIC_LENGTH         << RADIO_PCNF1_STATLEN_Pos) |
+				   (PACKET_PAYLOAD_MAXSIZE       << RADIO_PCNF1_MAXLEN_Pos); 	
+	#endif
 //如果使能相对应的shortcut就不需要将TASK->START设置为1了接收到radio->ready自动会发start事件
 #if SHORTCUT_EN == 1
 		NRF_RADIO->SHORTS = (RADIO_SHORTS_END_DISABLE_Enabled << RADIO_SHORTS_END_DISABLE_Pos) |
@@ -94,13 +101,13 @@ void radio_configure()
 										(RADIO_SHORTS_DISABLED_RXEN_Enabled << RADIO_SHORTS_DISABLED_RXEN_Pos); //|
 //										(RADIO_SHORTS_DISABLED_TXEN_Enabled << RADIO_SHORTS_DISABLED_TXEN_Pos);
 #endif
-		//数据白化
+	//数据白化
 	// NRF_RADIO->DATAWHITEIV = 0X0A;
     // CRC Config
     NRF_RADIO->CRCCNF = (RADIO_CRCCNF_LEN_Two << RADIO_CRCCNF_LEN_Pos); // Number of checksum bits
     if ((NRF_RADIO->CRCCNF & RADIO_CRCCNF_LEN_Msk) == (RADIO_CRCCNF_LEN_Two << RADIO_CRCCNF_LEN_Pos))
     {
-        NRF_RADIO->CRCINIT = 0x0000UL;      // Initial value      
+        NRF_RADIO->CRCINIT = 0xFFFFUL;      // Initial value      
         NRF_RADIO->CRCPOLY = 0x11021UL;     // CRC poly: x^16+x^12+x^5+1
     }
     else if ((NRF_RADIO->CRCCNF & RADIO_CRCCNF_LEN_Msk) == (RADIO_CRCCNF_LEN_One << RADIO_CRCCNF_LEN_Pos))
@@ -135,6 +142,7 @@ void radio_disable(void)
 	uint32_t ot;
 	if(radio_status != RADIO_STATUS_IDLE)
 	{
+
 		NRF_RADIO->SHORTS          = 0;
 		NRF_RADIO->EVENTS_DISABLED = 0;
 		NRF_RADIO->TASKS_DISABLE   = 1;
@@ -146,6 +154,7 @@ void radio_disable(void)
 			// Do nothing.
 		}
 		NRF_RADIO->EVENTS_DISABLED = 0;
+		NRF_RADIO->EVENTS_END = 0;
 		radio_status = RADIO_STATUS_IDLE;
 	}
 }
@@ -207,5 +216,21 @@ void radio_rx_carrier(uint8_t mode, uint8_t channel)
 	NRF_RADIO->MODE       = (mode << RADIO_MODE_MODE_Pos);
     NRF_RADIO->TASKS_RXEN = 1;
 	radio_status = RADIO_STATUS_RX;
+}
+/***********************************************************
+@Description:射频是否忙
+@Input：	
+@Output：无
+@Return:1-忙
+************************************************************/
+uint8_t radio_tx_isbusy(void)
+{
+	if(NRF_RADIO->STATE ==  RADIO_STATE_STATE_TxRu||
+		NRF_RADIO->STATE ==  RADIO_STATE_STATE_Tx)
+	{
+		return 1;
+	}
+	else
+		return 0;
 }
 

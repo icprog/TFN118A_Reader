@@ -17,7 +17,7 @@ int main(void)
 //		{
 //			tx_cnt++;
 //			rtc_flag = 0;
-//			Raio_Deal();//射频功能		
+//			Reader_RadioDeal();//射频功能		
 //		}
 		__WFI();
 	}

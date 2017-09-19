@@ -19,7 +19,7 @@
 #include "app_radio.h"
 #include "rtc.h"
 extern Payload_Typedef cmd_packet;//命令射频处理
-extern uint8_t radio_run_channel;//射频运行通道 
+extern volatile Radio_State_Typedef Radio_State;//射频工作状态
 extern TID_Typedef  TID_RECORD[CAPACITY];
 uint8_t Work_Mode = Idle;//工作模式
 uint8_t tx_buf[254];//串口发送
@@ -39,10 +39,10 @@ typedef struct
 	uint8_t crt_pkt;//当前分包编号
 }U_PKT_Typdef;
 U_PKT_Typdef U_TAG_PKT;
-#define MAX_TAG_NUM  21  //每包最大标签个数
-#define TAG_INFO_LEN 11
-#define MAX_PKT_Pos    4
-#define CRT_PKT_Msk    0x0f
+#define MAX_TAG_NUM  14  //每包最大标签个数
+#define TAG_INFO_LEN 16  //标签长度
+//#define MAX_PKT_Pos    4
+//#define CRT_PKT_Msk    0x0f
 void list_tag(void)
 {
 	
@@ -64,7 +64,7 @@ void app_process(void)
 	switch(Work_Mode)
 	{
 		case Idle:
-			if(RADIO_RUN_DATA_CHANNEL!= radio_run_channel)
+			if(RADIO_RUN_DATA_CHANNEL!= Radio_State.radio_run_channel)
 			{
 				radio_select(DATA_CHANNEL,RADIO_RX);
 			}
@@ -79,8 +79,11 @@ void app_process(void)
 				for(rfid_j=0;rfid_j<100;rfid_j++)//
 				{
 					TID_RECORD[rfid_j].TID[0] = rfid_j;
-					TID_RECORD[rfid_j].Sensor_Type = 0X01;
-					TID_RECORD[rfid_j].RSSI = rfid_j;
+					TID_RECORD[rfid_j].Sensor_Type = 0X03;
+					TID_RECORD[rfid_j].RSSI = 2;
+					TID_RECORD[rfid_j].VER = 1;
+					TID_RECORD[rfid_j].LeaveTime=1;
+					my_memset(TID_RECORD[rfid_j].Sensor_Data,1,Sensor_Data_Length);
 				}
 				#endif
 				//获取有效标签总数量，算出分包个数
@@ -106,13 +109,14 @@ void app_process(void)
 					U_Master.tx_buf[U_HEADER_IDX] = pkt_head1;
 					U_Master.tx_buf[U_HEADER_IDX+1] = pkt_head2;
 					U_Master.tx_buf[U_PROTOCOL_IDX] = U_PROTOCOL_VER;//协议
-					my_memcpy(&U_Master.tx_buf[U_ID_IDX],DeviceID,RADIO_ID_LENGTH);//读写器ID
-					U_Master.tx_buf[U_TXGPS_IDX] = U_TXGPS_Value;//定位信息
+					my_memcpy(&U_Master.tx_buf[U_ID_IDX],DeviceID,RADIO_RID_LENGTH);//读写器ID
+
 					U_Master.tx_buf[U_SEQ_IDX] = U_SEQ_Value;//流水号
-					U_Master.tx_buf[U_TXCMD_IDX] = U_CMD_LIST_TAG;//命令字
-					U_Master.tx_buf[U_DATA_IDX]=(U_TAG_PKT.max_pkt<<MAX_PKT_Pos)|U_TAG_PKT.crt_pkt;//分包编号
-					U_Master.tx_buf[U_DATA_IDX+1]=0X00;//设备数量
-					ptx_buf = &U_Master.tx_buf[U_DATA_IDX+2];
+					U_Master.tx_buf[U_CMD_IDX] = U_CMD_LIST_TAG;//命令字
+					U_Master.tx_buf[U_DATA_IDX]=U_TAG_PKT.max_pkt;//最大分包编号
+					U_Master.tx_buf[U_DATA_IDX+1]=U_TAG_PKT.crt_pkt;//当前分包编号
+					U_Master.tx_buf[U_DATA_IDX+2]=0X00;//设备数量
+					ptx_buf = &U_Master.tx_buf[U_DATA_IDX+3];
 					info_len=0;//信息内容长度清0
 					for(;rfid_j<CAPACITY;)//
 					{
@@ -122,21 +126,23 @@ void app_process(void)
 							*ptx_buf++ = TID_RECORD[rfid_j].TID[1];
 							*ptx_buf++ = TID_RECORD[rfid_j].TID[2];
 							*ptx_buf++ = TID_RECORD[rfid_j].TID[3];
+							*ptx_buf++ = TID_RECORD[rfid_j].TID[4];
 							*ptx_buf++ = TID_RECORD[rfid_j].State;
 							*ptx_buf++ = TID_RECORD[rfid_j].VER;
 							*ptx_buf++ = TID_RECORD[rfid_j].RSSI;
 							*ptx_buf++ = TID_RECORD[rfid_j].Sensor_Type;
-							*ptx_buf++ = TID_RECORD[rfid_j].Sensor_Data[0];
-							*ptx_buf++ = TID_RECORD[rfid_j].Sensor_Data[1];//边界管理器ID
-							*ptx_buf++ = TID_RECORD[rfid_j].Sensor_Data[2];//边界管理器ID
+							for(uint8_t i=0;i<Sensor_Data_Length;i++)
+							{
+								*ptx_buf++ = TID_RECORD[rfid_j].Sensor_Data[i];
+							}
 							info_len++;
 						}
 						rfid_j++;
 						if(info_len >= MAX_TAG_NUM)
 							break;
 					}
-					U_Master.tx_buf[U_DATA_IDX+1] = info_len;//设备数量
-					info_len = info_len*TAG_INFO_LEN + 2;//标签信息长度+分包标记+设备数量
+					U_Master.tx_buf[U_DATA_IDX+2] = info_len;//设备数量
+					info_len = (info_len<<4) + 3;//info_len*TAG_INFO_LEN  标签信息长度+分包标记+设备数量
 					U_Master.len = info_len + U_AfterLEN_FIX_LEN;//信息内容+串口协议长度后面的固定长度
 					U_Master.tx_buf[U_LEN_IDX] =  U_Master.len>>8;
 					U_Master.tx_buf[U_LEN_IDX+1] =  U_Master.len;
@@ -187,37 +193,37 @@ void app_process(void)
 					U_Master.tx_buf[U_HEADER_IDX] = pkt_head1;
 					U_Master.tx_buf[U_HEADER_IDX+1] = pkt_head2;
 					U_Master.tx_buf[U_PROTOCOL_IDX] = U_PROTOCOL_VER;//协议
-					my_memcpy(&U_Master.tx_buf[U_ID_IDX],DeviceID,RADIO_ID_LENGTH);//读写器ID
-					U_Master.tx_buf[U_TXGPS_IDX] = U_TXGPS_Value;//定位信息
+					my_memcpy(&U_Master.tx_buf[U_ID_IDX],DeviceID,RADIO_RID_LENGTH);//读写器ID
+
 					U_Master.tx_buf[U_SEQ_IDX] = U_SEQ_Value;//流水号
-					U_Master.tx_buf[U_TXCMD_IDX] = U_CMD_LIST_READER;//命令字
-					U_Master.tx_buf[U_DATA_IDX]=(U_TAG_PKT.max_pkt<<MAX_PKT_Pos)|U_TAG_PKT.crt_pkt;//分包编号
-					U_Master.tx_buf[U_DATA_IDX+1]=0X00;//设备数量
-					ptx_buf = &U_Master.tx_buf[U_DATA_IDX+2];
+					U_Master.tx_buf[U_CMD_IDX] = U_CMD_LIST_TAG;//命令字
+					U_Master.tx_buf[U_DATA_IDX]=U_TAG_PKT.max_pkt;//最大分包编号
+					U_Master.tx_buf[U_DATA_IDX+1]=U_TAG_PKT.crt_pkt;//当前分包编号
+					U_Master.tx_buf[U_DATA_IDX+2]=0X00;//设备数量
+					ptx_buf = &U_Master.tx_buf[U_DATA_IDX+3];
 					info_len=0;//信息内容长度清0
 					for(;rfid_j<CAPACITY;)//
 					{
-						if(TID_RECORD[rfid_j].TID[3]!=0xff)
+						if(TID_RECORD[rfid_j].TID[0]!=0xff)
 						{
 							*ptx_buf++ = TID_RECORD[rfid_j].TID[0];
 							*ptx_buf++ = TID_RECORD[rfid_j].TID[1];
 							*ptx_buf++ = TID_RECORD[rfid_j].TID[2];
 							*ptx_buf++ = TID_RECORD[rfid_j].TID[3];
+							*ptx_buf++ = TID_RECORD[rfid_j].TID[4];
 							*ptx_buf++ = TID_RECORD[rfid_j].State;
 							*ptx_buf++ = TID_RECORD[rfid_j].VER;
 							*ptx_buf++ = TID_RECORD[rfid_j].RSSI;
 							*ptx_buf++ = TID_RECORD[rfid_j].Sensor_Type;
-							*ptx_buf++ = TID_RECORD[rfid_j].Sensor_Data[0];
-							*ptx_buf++ = TID_RECORD[rfid_j].Sensor_Data[1];//边界管理器ID
-							*ptx_buf++ = TID_RECORD[rfid_j].Sensor_Data[2];//边界管理器ID
+							my_memcpy(ptx_buf,&TID_RECORD[rfid_j].Sensor_Data,Sensor_Data_Length);
 							info_len++;
 						}
 						rfid_j++;
 						if(info_len >= MAX_TAG_NUM)
 							break;
 					}
-					U_Master.tx_buf[U_DATA_IDX+1] = info_len;//设备数量
-					info_len = info_len*TAG_INFO_LEN + 2;//标签信息长度+分包标记+设备数量
+					U_Master.tx_buf[U_DATA_IDX+2] = info_len;//设备数量
+					info_len = (info_len<<4) + 3;//info_len*TAG_INFO_LEN  标签信息长度+分包标记+设备数量
 					U_Master.len = info_len + U_AfterLEN_FIX_LEN;//信息内容+串口协议长度后面的固定长度
 					U_Master.tx_buf[U_LEN_IDX] =  U_Master.len>>8;
 					U_Master.tx_buf[U_LEN_IDX+1] =  U_Master.len;
@@ -286,13 +292,14 @@ void app_process(void)
 					U_Master.tx_buf[U_HEADER_IDX] = pkt_head1;
 					U_Master.tx_buf[U_HEADER_IDX+1] = pkt_head2;
 					U_Master.tx_buf[U_PROTOCOL_IDX] = U_PROTOCOL_VER;//协议
-					my_memcpy(&U_Master.tx_buf[U_ID_IDX],DeviceID,RADIO_ID_LENGTH);//读写器ID
-					U_Master.tx_buf[U_TXGPS_IDX] = U_TXGPS_Value;//定位信息
+					my_memcpy(&U_Master.tx_buf[U_ID_IDX],DeviceID,RADIO_RID_LENGTH);//读写器ID
+
 					U_Master.tx_buf[U_SEQ_IDX] = U_SEQ_Value;//流水号
-					U_Master.tx_buf[U_TXCMD_IDX] = U_CMD_AUTO_REPORT;//命令字
-					U_Master.tx_buf[U_DATA_IDX]=(U_TAG_PKT.max_pkt<<MAX_PKT_Pos)|U_TAG_PKT.crt_pkt;//分包编号
-					U_Master.tx_buf[U_DATA_IDX+1]=0X00;//设备数量
-					ptx_buf = &U_Master.tx_buf[U_DATA_IDX+2];
+					U_Master.tx_buf[U_CMD_IDX] = U_CMD_LIST_TAG;//命令字
+					U_Master.tx_buf[U_DATA_IDX]=U_TAG_PKT.max_pkt;//最大分包编号
+					U_Master.tx_buf[U_DATA_IDX+1]=U_TAG_PKT.crt_pkt;//当前分包编号
+					U_Master.tx_buf[U_DATA_IDX+2]=0X00;//设备数量
+					ptx_buf = &U_Master.tx_buf[U_DATA_IDX+3];
 					info_len=0;//信息内容长度清0
 					for(;rfid_j<CAPACITY;)//
 					{
@@ -302,21 +309,20 @@ void app_process(void)
 							*ptx_buf++ = TID_RECORD[rfid_j].TID[1];
 							*ptx_buf++ = TID_RECORD[rfid_j].TID[2];
 							*ptx_buf++ = TID_RECORD[rfid_j].TID[3];
-							*ptx_buf++ = TID_RECORD[rfid_j].State|(TID_RECORD[rfid_j].LeaveTime<<U_LEAVE_TIME_Pos);
+							*ptx_buf++ = TID_RECORD[rfid_j].TID[4];
+							*ptx_buf++ = TID_RECORD[rfid_j].State;
 							*ptx_buf++ = TID_RECORD[rfid_j].VER;
 							*ptx_buf++ = TID_RECORD[rfid_j].RSSI;
 							*ptx_buf++ = TID_RECORD[rfid_j].Sensor_Type;
-							*ptx_buf++ = TID_RECORD[rfid_j].Sensor_Data[0];
-							*ptx_buf++ = TID_RECORD[rfid_j].Sensor_Data[1];//边界管理器ID
-							*ptx_buf++ = TID_RECORD[rfid_j].Sensor_Data[2];//边界管理器ID
+							my_memcpy(ptx_buf,&TID_RECORD[rfid_j].Sensor_Data,Sensor_Data_Length);
 							info_len++;
 						}
 						rfid_j++;
 						if(info_len >= MAX_TAG_NUM)
 							break;
 					}
-					U_Master.tx_buf[U_DATA_IDX+1] = info_len;//设备数量
-					info_len = info_len*TAG_INFO_LEN + 2;//标签信息长度+分包标记+设备数量
+					U_Master.tx_buf[U_DATA_IDX+2] = info_len;//设备数量
+					info_len = (info_len<<4) + 3;//info_len*TAG_INFO_LEN  标签信息长度+分包标记+设备数量
 					U_Master.len = info_len + U_AfterLEN_FIX_LEN;//信息内容+串口协议长度后面的固定长度
 					U_Master.tx_buf[U_LEN_IDX] =  U_Master.len>>8;
 					U_Master.tx_buf[U_LEN_IDX+1] =  U_Master.len;
@@ -343,10 +349,15 @@ void app_process(void)
 				U_Master.tx_buf[U_LEN_IDX] =  U_Master.len>>8;
 				U_Master.tx_buf[U_LEN_IDX+1] =  U_Master.len;
 				U_Master.tx_buf[U_PROTOCOL_IDX] = U_PROTOCOL_VER;//协议
-				my_memcpy(&U_Master.tx_buf[U_ID_IDX],DeviceID,RADIO_ID_LENGTH);//读写器ID
-				U_Master.tx_buf[U_TXGPS_IDX] = U_TXGPS_Value;//定位信息
+				my_memcpy(&U_Master.tx_buf[U_ID_IDX],DeviceID,RADIO_RID_LENGTH);//读写器ID
+
 				U_Master.tx_buf[U_SEQ_IDX] = U_SEQ_Value;//流水号
-				U_Master.tx_buf[U_TXCMD_IDX] = U_Master.rx_buf[U_CMD_IDX];//命令字
+				if(U_Master.rx_buf[U_CMD_IDX] ==U_CMD_READ_FILE)
+					U_Master.tx_buf[U_CMD_IDX] = U_CMD_READ_FILE;
+				else if(U_Master.rx_buf[U_CMD_IDX] == U_CMD_WRITE_FILE)
+					U_Master.tx_buf[U_CMD_IDX] = U_CMD_WRITE_FILE;//命令字
+				else if(U_Master.rx_buf[U_CMD_IDX] == U_CMD_ERASE_FILE)
+					U_Master.tx_buf[U_CMD_IDX] = U_CMD_ERASE_FILE;//命令字
 				U_Master.tx_buf[U_DATA_IDX] = (U_FILETIME_ERR>>8);//信息内容-状态
 				U_Master.tx_buf[U_DATA_IDX+1] = (uint8_t)U_FILETIME_ERR;//信息内容-状态
 				U_Master.len = ((U_Master.tx_buf[U_LEN_IDX]<<8)|U_Master.tx_buf[U_LEN_IDX+1]);//串口协议中数据长度，协议版本~信息内容
@@ -365,18 +376,19 @@ void app_process(void)
 					U_Master.tx_en = 0;
 					U_Master.tx_buf[U_HEADER_IDX] = pkt_head1;
 					U_Master.tx_buf[U_HEADER_IDX+1] = pkt_head2;
-					info_len = (uint8_t)(cmd_packet.packet[RADIO_LENGTH_IDX] - CMD_FIX_LENGTH);//信息长度
+					info_len = (uint8_t)(cmd_packet.packet[RADIO_LENGTH_IDX] - CMD_ONEFIX_LENGTH);//信息长度
 					U_Master.len = info_len + U_AfterLEN_FIX_LEN;//信息内容+串口协议长度后面的固定长度
 					U_Master.tx_buf[U_LEN_IDX] =  U_Master.len>>8;
 					U_Master.tx_buf[U_LEN_IDX+1] =  U_Master.len;
 					U_Master.tx_buf[U_PROTOCOL_IDX] = U_PROTOCOL_VER;//协议
-					my_memcpy(&U_Master.tx_buf[U_ID_IDX],DeviceID,RADIO_ID_LENGTH);//读写器ID
-					U_Master.tx_buf[U_TXGPS_IDX] = U_TXGPS_Value;//定位信息
+					my_memcpy(&U_Master.tx_buf[U_ID_IDX],DeviceID,RADIO_RID_LENGTH);//读写器ID
 					U_Master.tx_buf[U_SEQ_IDX] = U_SEQ_Value;//流水号
-					if(cmd_packet.packet[CMD_IDX] ==FILE_CMD_READ)
+					if(cmd_packet.packet[CMD_IDX] ==FILE_READ_CMD)
 						U_Master.tx_buf[U_CMD_IDX] = U_CMD_READ_FILE;
-					else if(cmd_packet.packet[CMD_IDX] ==FILE_CMD_WRITE)
+					else if(cmd_packet.packet[CMD_IDX] ==FILE_WRITE_CMD)
 						U_Master.tx_buf[U_CMD_IDX] = U_CMD_WRITE_FILE;
+					else if(U_Master.rx_buf[U_CMD_IDX] == U_CMD_ERASE_FILE)
+						U_Master.tx_buf[U_CMD_IDX] = U_CMD_ERASE_FILE;//命令字
 					my_memcpy(&U_Master.tx_buf[U_DATA_IDX],&cmd_packet.packet[EXCUTE_STATE_IDX],info_len);//信息内容
 					U_Master.len = ((U_Master.tx_buf[U_LEN_IDX]<<8)|U_Master.tx_buf[U_LEN_IDX+1]);//串口协议中数据长度，协议版本~信息内容
 					crc = crc16(&U_Master.tx_buf[U_LEN_IDX],(U_Master.len+U_LENTH_LEN));//长度~信息内容
@@ -402,10 +414,9 @@ void app_process(void)
 				U_Master.tx_buf[U_LEN_IDX] =  U_Master.len>>8;
 				U_Master.tx_buf[U_LEN_IDX+1] =  U_Master.len;
 				U_Master.tx_buf[U_PROTOCOL_IDX] = U_PROTOCOL_VER;//协议
-				my_memcpy(&U_Master.tx_buf[U_ID_IDX],DeviceID,RADIO_ID_LENGTH);//读写器ID
-				U_Master.tx_buf[U_TXGPS_IDX] = U_TXGPS_Value;//定位信息
+				my_memcpy(&U_Master.tx_buf[U_ID_IDX],DeviceID,RADIO_RID_LENGTH);//读写器ID
 				U_Master.tx_buf[U_SEQ_IDX] = U_SEQ_Value;//流水号
-				U_Master.tx_buf[U_TXCMD_IDX] = U_Master.rx_buf[U_CMD_IDX];//命令字
+				U_Master.tx_buf[U_CMD_IDX] = U_Master.rx_buf[U_CMD_IDX];//命令字
 				U_Master.tx_buf[U_DATA_IDX] = (U_DEVICE_TEST_ERR>>8);//信息内容-状态
 				U_Master.tx_buf[U_DATA_IDX+1] = (uint8_t)U_DEVICE_TEST_ERR;//信息内容-状态
 				U_Master.len = ((U_Master.tx_buf[U_LEN_IDX]<<8)|U_Master.tx_buf[U_LEN_IDX+1]);//串口协议中数据长度，协议版本~信息内容
@@ -428,8 +439,7 @@ void app_process(void)
 					U_Master.tx_buf[U_LEN_IDX] =  U_Master.len>>8;
 					U_Master.tx_buf[U_LEN_IDX+1] =  U_Master.len;
 					U_Master.tx_buf[U_PROTOCOL_IDX] = U_PROTOCOL_VER;//协议
-					my_memcpy(&U_Master.tx_buf[U_ID_IDX],DeviceID,RADIO_ID_LENGTH);//读写器ID
-					U_Master.tx_buf[U_TXGPS_IDX] = U_TXGPS_Value;//定位信息
+					my_memcpy(&U_Master.tx_buf[U_ID_IDX],DeviceID,RADIO_RID_LENGTH);//读写器ID
 					U_Master.tx_buf[U_SEQ_IDX] = U_SEQ_Value;//流水号
 					U_Master.tx_buf[U_CMD_IDX] = U_CMD_DEVICE_TEST;//命令
 					U_Master.tx_buf[U_DATA_IDX] = (U_DEVICE_TEST_SUCCESS>>8);//信息内容-状态

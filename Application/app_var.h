@@ -3,36 +3,46 @@
 #include "sys.h"
 #include "app_radio.h"
 //标签ID存储地址
-#define 	ID_BEGIN	0x3D000					//1KB,硬件信息区,前4字节放ID号
-//读写器内部参数
-typedef struct
-{
-	uint8_t tx_pwr;//发射功率
-	//射频周期发送
-	uint8_t radio_send_en;//周期发送
-	uint16_t radio_cycle_time;//周期间隔  1：表示50ms 
-	uint16_t radio_time_cnt;//计数器
-	uint8_t radio_time_cnt_en;//计数使能
-}Para_Typedef;
+//CODEPAGESIZE*CODESIZE即为ROM的大小,pg_size=1024,pg_num = 256,256KB的代码存储区
+#define nrf_page_size NRF_FICR->CODEPAGESIZE
+#define nrf_page_num NRF_FICR->CODESIZE
+#define nrf_size (nrf_page_size*nrf_page_num)  //总大小
+#define ID_OFFSET 	0X3000
+#define ID_BEGIN	(nrf_size-ID_OFFSET)//存放ID号，不同容量的芯片可以采用同一套代码
 
-#define para_area 1
-#define reserved_area 2
-#define user_area1 3
-#define user_area2 4
+typedef enum 
+{
+	Stand_Send,//正常发送
+	Message_Rx//消息接收
+}Radio_Work_Mode_Typedef;
 
 //flash部分,代码存储区，大小根据mcu型号决定.
 /*FICR寄存器中的CODEPAGESIZE对应着页个数，CODESIZE对应页包含的memory大小
 CODEPAGESIZE*CODESIZE即为ROM的大小,pg_size=1024,pg_num = 256,256KB的代码存储区，FLASH。
+255扇区打标记0x3fc00
+254扇区存储频道参数  0x3f800
+253扇区保留区  0x3f400
+252扇区用户区1 0x3f000
+251扇区用户区2 0x3ec00
 */
+
 typedef struct
 {
-	uint32_t MARK_BASE;
-	uint32_t PARA_BASE;
-	uint32_t RESERVER_BASE;
-	uint32_t USER1_BASE;
-	uint32_t USER2_BASE;
-	uint16_t page_size;
-	uint16_t page_num;
+	uint32_t MARK_BASE;//打标机
+	uint32_t PARA_BASE;//参数区
+	uint32_t RESERVER_BASE;//保留区
+	uint32_t USER1_BASE;//用户区1
+	uint32_t USER2_BASE;//用户区2
+	uint16_t page_size;//页个数
+	uint16_t page_num;//一页的大小
+	//以下几个参数用来记录ROM中的16/32块（偏移量）的计数值 值16/32，表示记录个数，0表示未记录
+
+	uint8_t RomMark;//倒数第一个区打标机
+	uint8_t	PARA_Pos;		//倒数第二个区，内部参数区
+	uint8_t	RESERVER_Pos;	//倒数第三个扇区，保留区
+	uint8_t	USER1_Pos;	  	//倒数第四个扇区，用户区1
+	uint8_t	USER2_Pos;   	//倒数第五个扇区,用户区2
+	uint8_t *pROM_Pos;		//记录指针
 }ROM_BaseAddr_Typedef;   //ROM基地址定义
 
 
@@ -50,129 +60,224 @@ typedef struct
 #define RADIO_RX										0
 #define RADIO_TX										1
 //默认射频频道
-#define RADIO_ADDRESS_H 0XE8
-#define RADIO_ADDRESS_L 0X98DB6D5A
-#define RADIO_CHANNEL_DATA						25
+#define RADIO_ADDRESS_H 0XE1
+#define RADIO_ADDRESS_L 0XE3E76D5A
+#define RADIO_CHANNEL_DATA						20
 #define RADIO_CHANNEL_CONFIG					50
 
-//PACKET-S0
-#define RADIO_S0_IDX 0
-#define RADIO_S0_DIR_UP 0 //上行 
-#define RADIO_S0_DIR_DOWN 1 //下行
-#define RADIO_S0_DIR_POS 0
-#define RADIO_S0_DIR_Msk 0X01
 //PACKET-LENGTH
-#define RADIO_LENGTH_IDX 1
-#define RADIO_HEAD_LENGTH 2
+#define RADIO_LENGTH_IDX 0
+//PACKET-S1
+#define RADIO_S1_IDX 1
+
+
 /**************************************************************************
 							标签上报参数定义
 ******************************************************************************/
 //PACKET-PAYLOAD-XOR
 #define PYLOAD_XOR_LENGTH 1
+#define PYLOAD_XOR_IDX    2
 
+#define RADIO_HEAD_LENGTH 2//固定头PACKET-LENGTH+PACKET-S1
 //PACKET-PAYLOAD
-#define PAYLOAD_BASE_IDX RADIO_HEAD_LENGTH
+#define PAYLOAD_BASE_IDX (RADIO_HEAD_LENGTH+PYLOAD_XOR_LENGTH)
 
 //长度
-#define RADIO_TID_LENGTH 4
-#define RADIO_RID_LENGTH 4
-#define RADIO_ID_LENGTH	4
+#define RADIO_TID_LENGTH 5
+#define RADIO_RID_LENGTH 5
 #define RADIO_CMD_LENGTH 1
 
-//索引号
-//#define TAG_SER_IDX                     0//顺序号
-#define TAG_ID_IDX										PAYLOAD_BASE_IDX//标签ID 2~5
-#define TAG_STATE_IDX 									(PAYLOAD_BASE_IDX+RADIO_TID_LENGTH)//状态字
-//#define TAG_WINDOWS_IDX								6//接收窗口指示
-//#define TAG_JOINTYPE_IDX								6//静态接入指示
-//#define TAG_ERROR_IDX									6//数据异常指示
-//#define TAG_KEY_IDX									6//按键指示
-//#define TAG_SHOCK_IDX									6//振动指示
-#define TAG_VERSION_IDX									(PAYLOAD_BASE_IDX+5)//版本索引号
-#define TAG_STYPE_IDX									(PAYLOAD_BASE_IDX+6)//信息标签类型
-#define TAG_SDATA_IDX									(PAYLOAD_BASE_IDX+7)//传感数据
-
-//值
-//取值
-//顺序号,0~15静态，16动态
-//#define TAG_SER_Pos											0
-//#define TAG_SER_Msk											0xFF
+//字节索引号
+#define TAG_SER_IDX										(PAYLOAD_BASE_IDX)  //流水号
+#define TAG_ID_IDX										(PAYLOAD_BASE_IDX+1)//标签ID 5字节
+#define TAG_STATE_IDX 									(TAG_ID_IDX+RADIO_TID_LENGTH)//状态字
+#define TAG_VERSION_IDX									(TAG_STATE_IDX+1)//版本索引号
+#define TAG_TYPE_IDX									(TAG_VERSION_IDX+1)//类型字
+#define TAG_RSSIBASE_IDX								(TAG_VERSION_IDX+2)//125k信号强度
+#define TAG_BASEDOOR_IDX								(TAG_VERSION_IDX+3)//门口定位器
+#define TAG_BASENORMAL_IDX								(TAG_VERSION_IDX+5)//常规定位器
+#define TAG_MSG_IDX										(TAG_VERSION_IDX+7)//消息	
 
 
-//低压指示，1-低压
-#define TAG_LOWPWR_Pos									0
+//上报位索引及掩码
+//SER
+typedef struct
+{
+	uint8_t State_Ser_Num;//状态流水 0~7，设备状态每变化1次，流水加1，饱和卷绕
+	uint8_t Send_Ser_Num;//发射流水 0~15，设备每发射1次，流水加1
+	uint8_t State_Pre;//上一次上报的状态
+//	uint8_t State_Cur;//当前状态
+}Serial_Typedef;
+#define TAG_STATESER_Pos 4 //状态流水
+#define TAG_STATESER_Msk 0x70 
+#define TAG_STATESER_MAX_VALUE 7
+#define TAG_SENDSER_Pos 0  //发射流水
+#define TAG_SENDSER_Msk 0x0f
+#define TAG_SENDSER_MAX_VALUE 15
+
+typedef enum
+{
+	RADIO_DIR_UP = 0,//上行
+	RADIO_DIR_DOWN = 1//下行
+}RADIO_DIR_Typedef;
+#define RADIO_DIR_POS 7
+#define RADIO_DIR_Msk 0X80
+
+//标签状态
+#define TAG_LOWPWR_Pos									0//低电 1：低电
 #define TAG_LOWPWR_Msk									0x01
-#define TAG_KEY_Pos										1
-#define TAG_KEY_Msk										0x02
-#define TAG_WITHSENSOR_Pos								2
-#define TAG_WITHSENSOR_Msk								0x04
-#define TAG_WITHWIN_Pos									3
-#define TAG_WIHTWIN_Msk									0x08
-#define TAG_MODE_Pos									4
-#define TAG_MODE_Msk									0x10
-#define TAG_TIMEUPDATE_Pos								5
-#define TAG_TIMEUPDATE_Msk 								0x20
+#define TAG_SHOCK_IDX									1//振动指示1：振动
+#define TAG_SHOCK_Msk									0x02
+#define TAG_KEY_Pos										2//按键指示 1
+#define TAG_KEY_Msk										0x04
+#define TAG_USSVALUE_Pos								3//传感值更新时置1
+#define TAG_USSVALUE_Msk								0x08
+#define TAG_BASEACT_Pos									4//被边界管理器激活时置1
+#define TAG_BASEACT_Msk									0x10
+#define TAG_WORKMODE_Pos								6//工作模式指示 1：保存模式 0：活动模式
+#define TAG_WORKMODE_Msk								0x40
+#define TAG_WITHWIN_Pos									7//接收窗口指示 1：携带接收窗口
+#define TAG_WIHTWIN_Msk									0x80
+
+//#define TAG_TIMEUPDATE_Pos							5
+//#define TAG_TIMEUPDATE_Msk 							0x20
 //版本信息 
-#define TAG_HDVERSION_POS								4
 #define TAG_SFVERSION_POS								0
-#define TAG_HDVER_NUM									1
 #define TAG_SFVER_NUM									1
-//传感类型
-#define TAG_SENSORTYPE_Pos								0
-#define TAG_SENSORTYPE_SchoolWatch 			(1 << TAG_SENSORTYPE_Pos)
-//传感数据
-#define TAG_MSEQ_Pos 									4
+
+//校园腕带分类信息
+#define TAG_TYPE_SchoolWatch 							0x03//类型字
+#define TAG_RSSIBASE_Msk								0x1f//边界管理器信号强度
+#define TAG_BASEID_Msk									0XFFFF//边界管理器ID
+#define TAG_MSG1_Pos                                    4//一类消息编号
+#define TAG_MSG1_Msk									0xf0
+#define TAG_MSG2_Pos									1//2类消息编号
+#define TAG_MSG2_Msk									0x0f
+#define TAG_TYPE_SchoolWatch_LEN						7
 /********************************************
 					标签内部参数
 ********************************************/
-#define TAGP_BRIEFNUM_IDX								0//短号，0～16
-#define P_PWR_IDX									1//发射功率，0～7
-#define TAGP_RPINFOSRC_IDX								2//自动上报所需携带的信息来源，0～2
-#define TAGP_WORKMODE_IDX								3//工作模式，0-保存模式，1-活动模式
-//#define TAGP_DELIVERID_IDX							9//工厂ID，4B，0xFFFFFFFF-待写入
-//#define TAGP_SENSORTYPE_IDX							13//传感类型，0-无，1-温度，2-心率，0～2
-//#define TAGP_SSRUNIT_IDX								14//传感采样周期单位，0-秒，1-分，2-时
-//#define TAGP_SSRVALUE_IDX								14
-/*内部参数取值*/
-//短号
-#define TAGP_BRIEFNUM_MAX_VALUE							16
-//发射功率，0～7；0--30dbm，1--20dbm，2--16dbm,3--12dbm,4--8dbm,5--4dbm,6--0dbm,7-+4dbm
-#define P_PWR_Pos									4
-#define P_PWR_Msk									0xF0
-#define P_PWR_N30DBM									0
-#define P_PWR_N20DBM									1
-#define P_PWR_N16DBM									2
-#define P_PWR_N12DBM									3
-#define P_PWR_N8DBM									4
-#define P_PWR_N4DBM									5
-#define P_PWR_P0DBM									6
-#define P_PWR_P4DBM									7
-#define P_PWR_MAX_VALUE								7  //参数最大值
+//参数字节索引
+typedef enum
+{
+	//0
+	TAGP_ACTIVESEND_IDX= 0,//自主发射使能 1：有效
+	TAGP_ADAPTIVE_IDX = 0,//自适应使能 1：有效
+	TAGP_SENDMODE_IDX = 0,//发射模式区分
+	TAGP_WORKMODE_IDX = 0,//工作模式，0-保存模式，1-活动模式
+	//1
+	TAGP_AUTOREPORT_IDX = 1,//自动上报发射周期（0~7）
+	//2
+	TAGP_PWR_IDX = 2,//发射功率(0~7)
+	//3
+	TAGP_EVENTCLEAR_IDX=3,//事件清除方式
+	//4
+	TAGP_THRBASE_IDX = 4,//125K信号强度门限 0~31
+	//5
+	TAGP_SSRUNIT_IDX = 5,// 传感器采样周期 0-秒 1-分 2-时
+	TAGP_SSRVALUE_IDX = 5,//传感机采样值
+	TAGP_KEYALARM_IDX = 5//按键报警 0~6
+}TAGP_Typedef;
 
-//工作模式,0-保存模式，1-活动模式
+//参数位索引、掩码
+//自主发射、自适应发射
+#define TAGP_ACTIVESEND_Pos  2//自主发射
+#define TAGP_ACTIVESEND_Msk  0x04
+#define TAGP_ADAPTIVE_Pos    1//自适应发射
+#define TAGP_ADAPTIVE_Msk    0x02
+//标签发射模式
+typedef enum
+{
+	Passive_Send=0,//单激活发射
+	Active_Send=1,//自主发射
+//	Base_Passive_Send=2,//自适应模式下，初始模式为单激活发射，允许边界管理器修改初始模式
+//	Base_Active_Send=3 //自适应模式下，初始模式为单激活发射，允许边界管理器修改初始模式
+}Tag_SendMode_Typedef;
+
+//工作模式,1-保存模式，0-活动模式
 #define TAGP_WORKMODE_Pos								0
-#define TAGP_WORKMODE_Msk								0x0f
+#define TAGP_WORKMODE_Msk								0x01
 #define TAGP_WORKMODE_MAX_VALUE							0x01
- 
-//读写器
-#define READER_ID_IDX									(PAYLOAD_BASE_IDX + RADIO_TID_LENGTH) 
+//标签工作模式
+typedef enum
+{
+	Active_Mode = 0,
+	Save_Mode =1
+}Tag_WorkMode_Typedef;
+//标签模式
+typedef struct
+{
+	uint8_t WorkMode;//0:活动模式 1：仓储模式
+	uint8_t SendMode;//0:被动发送 1：主动发送
+	uint8_t AdaptiveMode;//1:自适应模式
+	uint8_t ActivatedByBase;//1：被边界管理器激活
+	uint8_t Send_Period;// 发射周期
+	uint8_t AlarmClr_Mode;//0:上报10次清除 1：读写器清除
+	uint8_t THR_BASE;//低频激活信号门限
+	uint16_t Key_Alarm_Delay;//按键报警延时
+}Tag_Mode_Typedef;
+//自动上报周期
+#define TAGP_AUTOREPORT_Pos 0
+#define TAGP_AUTOREPORT_Msk 0x07
 
-#define READER_UP_ID_IDX										PAYLOAD_BASE_IDX//标签ID 2~5
-#define READER_UP_STATE_IDX 									(PAYLOAD_BASE_IDX+RADIO_TID_LENGTH)//状态字
-#define READER_UP_VERSION_IDX									(PAYLOAD_BASE_IDX+5)//版本索引号
-#define READER_UP_STYPE_IDX									(PAYLOAD_BASE_IDX+6)//信息标签类型
-#define READER_UP_SDATA_IDX									(PAYLOAD_BASE_IDX+7)//传感数据
-//传感类型
-#define READER_UP_SENSORTYPE_Pos								0
-#define READER_UP_SENSORTYPE_SchoolWatch 			(1 << READER_UP_SENSORTYPE_Pos)
+//发射功率，0～7；0--30dbm，1--20dbm，2--16dbm,3--12dbm,4--8dbm,5--4dbm,6--0dbm,7-+4dbm
+#define TAGP_PWR_Pos									0
+#define TAGP_PWR_Msk									0x0F
+#define TAGP_PWR_MAX_VALUE								7  //参数最大值
+typedef enum 
+{
+	P_PWR_N30DBM	= 0,								
+	P_PWR_N20DBM	= 1,
+	P_PWR_N16DBM	= 2,
+	P_PWR_N12DBM	= 3,
+	P_PWR_N8DBM	= 4,
+	P_PWR_N4DBM	= 5,
+	P_PWR_P0DBM	= 6,
+	P_PWR_P4DBM	= 7
+}TAGP_PWR_Typedef;
+//事件清除方式
+#define TAGP_EVENTCLEAR_Pos								0
+#define TAGP_EVENTCLEAR_Msk								0x01
+typedef enum
+{
+	Tag_Clear = 0,
+	Reader_Clear = 1
+}EVENTCLEAR_Typedef;
+//低频激活信号门限
+#define TAGP_THRRSSI_Pos								0
+#define TAGP_THRRSSI_Msk								0xFF
+//报警延时 
+#define TAGP_KEYALARM_Pos								0
+#define TAGP_KEYALARM_Msk								0x07
 
+//内部参数区检查最大值
+typedef enum
+{
+	PARA_BYTE0_MAX = 0X07,//内部参数区字节0
+	PARA_BYTE1_MAX = 0X07,
+	PARA_BYTE2_MAX = 0X07,
+	PARA_BYTE3_MAX = 0X01,
+	PARA_BYTE4_MAX = 0X20,//32
+	PARA_BYTE5_BIT76_MAX = 0X02,//2
+	PARA_BYTE5_BIT50_MAX = 0X3C,//60
+	PARA_BYTE5_MAX = 0X06//校园腕带用该字段替换
+}PARA_MAX_VALUE;
+
+
+//#define TAG_LOWVOLTAGE_Pos						0
+//#define TAG_LOWVOLTAGE_Msk						0x01
+//#define TAG_LOWVOLTAGE_WARN						0x01
+//#define TAG_LOWVOLTAGE_NORMAL						0x00
+/********************************************
+					读写器
+********************************************/
 
 //标签记录
-#define Sensor_Data_Length 3
+#define Sensor_Data_Length 7
 #define CAPACITY 200	//标签容量 
 typedef struct
 {
-	uint8_t TID[4];//标签ID
+	uint8_t TID[RADIO_TID_LENGTH];//标签ID
 	uint8_t State;//标签状态
 	uint8_t RSSI;//信号强度
 	uint8_t LeaveTime;//离开时间
@@ -181,14 +286,20 @@ typedef struct
 	uint8_t Sensor_Data[Sensor_Data_Length];//传感数据，指示消息类型
 	
 }TID_Typedef;
+//读写器
+//读写器内部参数
+typedef struct
+{
+	uint8_t tx_pwr;//发射功率
+	//射频周期发送
+	uint8_t radio_send_en;//周期发送
+	uint16_t radio_cycle_time;//周期间隔  1：表示50ms 
+	uint16_t radio_time_cnt;//计数器
+	uint8_t radio_time_cnt_en;//计数使能
+}Para_Typedef;
 
-//#define TAG_LOWVOLTAGE_Pos							0
-//#define TAG_LOWVOLTAGE_Msk							0x01
-//#define TAG_LOWVOLTAGE_WARN							0x01
-//#define TAG_LOWVOLTAGE_NORMAL						0x00
-/********************************************
-					读写器内部参数
-********************************************/
+#define READER_ID_IDX									(PAYLOAD_BASE_IDX + RADIO_TID_LENGTH) 
+
 #define READERP_SENDEN_IDX              1//周期发送
 #define READERP_SENDTIME_IDX 			1//发送间隔
 
@@ -238,43 +349,67 @@ typedef struct
 标签命令写回复
 定义		执行状态2字节
 数组位置	11
+写文件
+PAYLOAD长度 TID+RID+CMD+DATA+XOR = 4+4+1+6+16+1 = 32 
 ******************************************************************/
 //执行状态
 #define EXCUTE_STATE_LENGTH	2
 //点对点命令固定长度
-#define CMD_FIX_LENGTH 		(RADIO_TID_LENGTH+RADIO_RID_LENGTH+RADIO_CMD_LENGTH+PYLOAD_XOR_LENGTH)
+#define CMD_ONEFIX_LENGTH 		(PYLOAD_XOR_LENGTH + RADIO_CMD_LENGTH + RADIO_TID_LENGTH + RADIO_RID_LENGTH )//12
 //命令回复固定长度
-#define CMD_ACK_FIX_LENGTH 		(CMD_FIX_LENGTH+EXCUTE_STATE_LENGTH)//
+#define CMD_ACK_FIX_LENGTH 		(PYLOAD_XOR_LENGTH + RADIO_CMD_LENGTH + RADIO_TID_LENGTH + RADIO_RID_LENGTH + EXCUTE_STATE_LENGTH)//14
 //命令索引号
-#define CMD_IDX				(RADIO_HEAD_LENGTH + RADIO_TID_LENGTH + RADIO_RID_LENGTH)
+#define CMD_IDX				TAG_SER_IDX//3
+#define CMD_PARA_IDX        (RADIO_HEAD_LENGTH + PYLOAD_XOR_LENGTH + RADIO_CMD_LENGTH + RADIO_TID_LENGTH + RADIO_RID_LENGTH )//14
 //文件操作索引号
-#define FILE_MODE_IDX (CMD_IDX+3)
-#define FILE_OFFSET_IDX (CMD_IDX+4)
-#define FILE_LENGTH_IDX (CMD_IDX+6)
-#define FILE_WDATA_IDX (CMD_IDX+7)			
+#define FILE_MODE_IDX (CMD_PARA_IDX+1)
+#define FILE_OFFSET_IDX (CMD_PARA_IDX+2)
+#define FILE_LENGTH_IDX (CMD_PARA_IDX+3)
+#define FILE_WDATA_IDX (CMD_PARA_IDX+4)			
 
 //命令
-#define FILE_CMD_READ  								0X38  	//读文件
-#define FILE_CMD_WRITE								0X39  	//写文件
+typedef enum
+{
+	FILE_READ_CMD = 0x00,
+	FILE_WRITE_CMD = 0X01,
+	FILE_ERASE_CMD = 0X02,
+//	RECORD_READ_CMD = 0X04,
+//	RECORD_WRITE_CMD = 0X05,
+	MSG_PUSH_CMD = 0x21,
+	DEVICE_TEST_CMD = 0X22,  //整机测试命令
+	ALARM_CLEAR_CMD	= 0X23  //命令清除	
+}RADIO_CMD_Typedef;
+#define CMD_Msk 0x7f
+/**************************文件操作***************************************/
 //模式
-#define FILE_MODE_PARA								0X01	//内部参数区
-#define FILE_MODE_RESERVER							0X02	//保留区
-#define FILE_MODE_USER1								0X03	//用户区1
-#define FILE_MODE_USER2								0X04	//用户区2
+typedef enum
+{
+	FILE_MODE_PARA = 0x00,//内部参数区
+	FILE_MODE_RESERVER = 0x01,//保留区
+	FILE_MODE_USER1 = 0x02,//用户区1
+	FILE_MODE_USER2 = 0x03,//用户区2
+	FILE_MODE_RUNPARA = 0X04//运行参数
+}MODE_Typedef;
+
 //读取最新记录
-#define FILE_OFFSET_RNEW							0XFFFF 	//读取最新记录
+#define FILE_OFFSET_RNEW	0XFF 	//读取最新记录
 //数据
-#define FILE_RDATA_IDX		13
+#define FILE_RDATA_IDX		(RADIO_HEAD_LENGTH + CMD_ACK_FIX_LENGTH)//16
 //写偏移
-// 0xffff写最新记录，当记录满时，擦除所有记录
-// 0xfffe写最新记录，当记录满时，不擦除记录
-#define FILE_OFFSET_WNEW	0XFFFF
+// 0xff写最新记录，当记录满时，擦除所有记录
+// 0xfe写最新记录，当记录满时，不擦除记录
+typedef enum
+{
+	FILE_OFFSET_WNEW = 0xff,
+	FILE_OFFSET_WNEW_NERASE = 0xfe
+}FILE_OFFSET;
+
 /******************************************************************
 						执行状态
 					出错代码格式2字节
 				出错类别代码 出错子代码
 ******************************************************************/
-#define EXCUTE_STATE_IDX 	11
+#define EXCUTE_STATE_IDX 	CMD_PARA_IDX
 
 typedef enum
 {
@@ -286,7 +421,8 @@ typedef enum
 	FILE_MODE_ERR=0X00,//操作区不存在
 	FILE_BODER_ERR=0X01,//超出边界，长度/读偏移量超出
 	FILE_WOFFSET_ERR=0X02,//写偏移错误
-	FILE_WDATA_ERR=0X03    //数据错误
+	FILE_WDATA_ERR=0X03,    //数据错误
+	FILE_FULL_ERR=0X04 //记录满
 }ERROR_L_Typedef;
 #define CMD_RUN_SUCCESS 0X0000//命令执行成功
 
@@ -297,47 +433,59 @@ typedef struct
 	uint16_t offset;//偏移位置
 }File_Typedef;
 
-//消息操作
-#define MESSAGE_CMD									0XB0	//消息命令
+/****************************消息操作*****************************/
+//命令参数:消息（消息分类消息编号）+ 分包（最大分包编号当前分包编号）+消息内容
+#define MSG_DATA_IDX  (CMD_PARA_IDX+2)
+#define MSG_HEAD_LEN   2		
+#define MSG_CMD_LEN   (PYLOAD_XOR_LENGTH + RADIO_CMD_LENGTH + RADIO_TID_LENGTH + RADIO_RID_LENGTH + MSG_HEAD_LEN)
+typedef enum
+{
+	msg_calendar = 0,//日历
+	msg_news=1
+}MsgType_Typedef;
+
+#define READER_MSG_TYPE_Pos  	4//消息类别
+#define READER_MSG_TYPE_Msk  	0xf0
+#define READER_MSG_SEQ_Pos		0//RF下发消息序号
+#define READER_MSG_SEQ_Msk		0x0f
+
+#define PKT_MAX_NUM_Pos			4//最大分包编号
+#define PKT_MAX_NUM_Msk			0xf0//最大分包编号
+#define PKT_CUR_NUM_Pos			0//当前分包编号
+#define PKT_CUR_NUM_Msk			0x0f
+#define PKT_MAX_NUM_VALUE		15//最大分包编号
+#define PKT_ONE_MAX_VALUE  		16 //一包数据最大字节数
+
+#define MSG1_SEQ_Max_Value		15//1类消息最大消息序号
+#define MSG2_SEQ_Max_Value		15//2类消息最大消息序号
+//#define PKT_ONE_OFFSET			4//*16 消息存储时，索引号
+#define MSG1_RPUSH_TIMES		0//重发次数为1次
+//分包是否接收完成
+typedef enum
+{
+	pkt_unwrite= 0,
+	pkt_write = 1
+}pkt_chk_Typedef;
+//消息下发和接收数据结构
 typedef struct
 {
-	uint8_t msg_pkt_seq;	//包序号
-//	uint8_t has_data_flag;  //有数据
-	uint8_t msg_head;		//消息头
-	uint8_t msg_pkt_len;	//下发的一个包中的信息长度
-	uint8_t msg_idx;		//消息索引
-	uint8_t MSG_PUSH_HEAD;  //下发的包头
-	uint8_t PKT_PUSH_LEN[4];//包0~3长度
-	uint8_t PKT_PUSH_BUF[4][32];//包0~3数据
-	uint8_t PKT_PUSH_NUM;//分包个数
-	uint8_t PKT_PUSH_SEQ;//分包序号
+	uint8_t MSG_PUSH_RID[RADIO_RID_LENGTH];//消息下发接收器ID
+	uint8_t MSG_PUSH_TID[RADIO_TID_LENGTH];//消息下发标签ID
+	//分包
+	uint8_t T_MSG1_ONE_LEN;//标签消息1一条消息长度
+	uint8_t R_PKT_PUSH_NUM;//记录读写器下发分包个数
+	uint8_t R_PKT_PUSH_NUM_TEMP;//发送两遍，缓存R_PKT_PUSH_NUM
+	uint8_t MSG_REPUSH_NUM;//重发次数
 	uint8_t MSG_PUSH_SEQ;//下发的消息序号	
-	uint8_t PKT_MORE;//更多包
-	uint8_t MSG_RE_PUSH;//重发次数
-	uint8_t MSG_PUSH_RID[4];//接收器ID
-	uint8_t MSG_PUSH_TID[4];//标签ID
+	uint8_t PKT_MAX_NUM;//最大分包编号
+	uint8_t PKT_CUR_NUM;//当前分包编号
+	
+	uint8_t PKT_CHK[PKT_MAX_NUM_VALUE];//根据最大包编号数，检查包完整性，1表示收到该分包
+	uint8_t PKT_PUSH_LEN[PKT_MAX_NUM_VALUE];//包0~14长度
+	uint8_t PKT_PUSH_BUF[PKT_MAX_NUM_VALUE][PKT_ONE_MAX_VALUE];//包0~14数据
+	
 }Message_Typedef;
-//消息操作索引号
-#define MSG_HEAD_IDX (CMD_IDX+1)
-#define MSG_DATA_IDX  (CMD_IDX+2)
-
-#define MSG_HEAD_Pos								7
-#define MSG_HEAD_Msk								0X80
-#define MSG_SEQ_Pos									4
-#define MSG_SEQ_Msk									0X70
-#define MSG_SEQ_Max_Value							7
-#define MSG_PKT_Seq_Pos								0
-#define MSG_PKT_Seq_Msk								0x03
-#define MSG_PKT_END_Pos								2
-#define MSG_PKT_END_Msk								0x04
-#define MSG_END_Pos									3
-#define MSG_END_Msk									0x08
-#define MSG_PAYLOAD_FIX_LEN (RADIO_TID_LENGTH+RADIO_RID_LENGTH+RADIO_CMD_LENGTH+PYLOAD_XOR_LENGTH)
-#define MSG_ERROR_Msk								0xff
-#define MSG_START_END_VALUE							0X0000
-#define MSG_START_END_LEN							2
-#define MSG_HEAD_LEN								1
-#define MSG_RPUSH_TIMES								1
+//消息错误类型
 typedef enum 
 {
 	MSG_SUCCESS=0X00,
@@ -346,14 +494,19 @@ typedef enum
 	MSG_CMDPARA_ERROR = 0X03, //命令参数错误
 	MSG_ERROR =0X04
 }ERROR_MSG_Typedef;
-//时间设置
-#define TIME_PARA_LEN							4
-#define TIME_SET_CMD							0XB1	//时间设置命令
-#define DEVICE_TEST_CMD 						0XB2  //整机测试命令
-#define ALARM_CLEAR_CMD							0XB3  //命令清除
+
+
+#define TIME_PARA_LEN							4//时间设置
+
 //函数
 void SystemParaInit(void);
 void UpdateRunPara(void);
 uint8_t Read_Para(File_Typedef f1_para,uint8_t *p_packet);
 uint8_t Write_Para(File_Typedef f1_para,uint8_t *p_packet);
+uint8_t Erase_Para(File_Typedef f1_para,uint8_t *p_packet);
+#if 0
+uint8_t Read_Record(uint8_t *p_packet);
+uint8_t Write_Record(uint8_t *p_packet);
+#endif
+void UpdateSendMode(uint8_t mode);//更新发射模式
 #endif
